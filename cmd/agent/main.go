@@ -126,6 +126,5 @@ func main() {
 			}
 		}
 	}()
-	for {
-	}
+	select {}
 }
