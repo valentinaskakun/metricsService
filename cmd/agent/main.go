@@ -41,7 +41,6 @@ func getCurrentRuntimeMemStats() (currentMemStats runtime.MemStats) {
 func updateValuesRuntime(currentMemStats runtime.MemStats, metricsForUpdate *Metrics) {
 	metricsForUpdate.gaugeMetric["alloc"] = float64(currentMemStats.Alloc)
 	metricsForUpdate.gaugeMetric["buckHashSys"] = float64(currentMemStats.BuckHashSys)
-	return
 }
 func updateMetrics(metricsToUpdate *Metrics) {
 	updateValuesRuntime(getCurrentRuntimeMemStats(), metricsToUpdate)
@@ -49,7 +48,6 @@ func updateMetrics(metricsToUpdate *Metrics) {
 	metricsToUpdate.gaugeMetric["randomValue"] = rand.Float64()
 	metricsToUpdate.timeMetric = time.Now()
 	fmt.Println(time.Now(), "updating")
-	return
 }
 func sendMetrics(metricsToSend *Metrics) {
 	for key, value := range metricsToSend.gaugeMetric {
@@ -61,7 +59,6 @@ func sendMetrics(metricsToSend *Metrics) {
 		//sendPOST("update", "counter", key, strconv.FormatInt(value, 10))
 	}
 	fmt.Println("counter", metricsToSend.counterMetric["pollCount"])
-	return
 }
 func sendPOST(urlAction string, urlMetricType string, urlMetricKey string, urlMetricValue string) {
 	//http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
@@ -88,10 +85,9 @@ func sendPOST(urlAction string, urlMetricType string, urlMetricKey string, urlMe
 		return
 	}
 	fmt.Println(string(body))
-	return
 }
 func inBackgroundMetrics(tickerToBackground *time.Ticker, metricsToBackground *Metrics, functionToBackground func(*Metrics)) {
-	for _ = range tickerToBackground.C {
+	for range tickerToBackground.C {
 		functionToBackground(metricsToBackground)
 		fmt.Println(tickerToBackground, " ticking")
 	}
