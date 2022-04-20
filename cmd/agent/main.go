@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"syscall"
 	"time"
 )
@@ -21,12 +22,9 @@ type MetricCount struct {
 	metricValue int
 }
 type Metrics struct {
-	//metricsCurrent []MetricGauge
 	gaugeMetric   map[string]float64
 	counterMetric map[string]int64
-	//pollCount     int
-	//randomValue   float64
-	timeMetric time.Time
+	timeMetric    time.Time
 }
 
 var pollInterval time.Duration = 2000    //Milliseconds
@@ -51,12 +49,12 @@ func updateMetrics(metricsToUpdate *Metrics) {
 }
 func sendMetrics(metricsToSend *Metrics) {
 	for key, value := range metricsToSend.gaugeMetric {
-		fmt.Println("sendMetrics gauge", key, value)
-		//sendPOST("update", "gauge", key, fmt.Sprintf("%f", value))
+		//fmt.Println("sendMetrics gauge", key, value)
+		sendPOST("update", "gauge", key, fmt.Sprintf("%f", value))
 	}
 	for key, value := range metricsToSend.counterMetric {
-		fmt.Println("sendMetrics counter", key, value)
-		//sendPOST("update", "counter", key, strconv.FormatInt(value, 10))
+		//fmt.Println("sendMetrics counter", key, value)
+		sendPOST("update", "counter", key, strconv.FormatInt(value, 10))
 	}
 	fmt.Println("counter", metricsToSend.counterMetric["pollCount"])
 }
