@@ -77,12 +77,12 @@ func updateMetrics(metricsToUpdate Metrics) {
 func sendMetrics(metricsToSend Metrics) {
 	for key, value := range metricsToSend.gaugeMetric {
 		//fmt.Println("sendMetrics gauge", key, value)
-		sendPOST("update", "gauge", key, fmt.Sprintf("%f", value))
+		sendPOST("update", "gauge", key, fmt.Sprintf("%f", value)).Body.Close()
 		//fmt.Println(test.StatusCode)
 	}
 	for key, value := range metricsToSend.counterMetric {
 		//fmt.Println("sendMetrics counter", key, value)
-		sendPOST("update", "counter", key, strconv.FormatInt(value, 10))
+		sendPOST("update", "counter", key, strconv.FormatInt(value, 10)).Body.Close()
 	}
 	//fmt.Println("counter", metricsToSend.counterMetric["pollCount"])
 }
