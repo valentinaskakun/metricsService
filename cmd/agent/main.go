@@ -102,11 +102,11 @@ func sendPOST(urlAction string, urlMetricType string, urlMetricKey string, urlMe
 		return resEmpty
 	}
 	res, err := client.Do(req)
-	defer res.Body.Close()
 	if err != nil {
 		fmt.Println(err)
 		return resEmpty
 	}
+	defer res.Body.Close()
 	return res
 }
 func inBackgroundMetrics(tickerToBackground *time.Ticker, metricsToBackground *Metrics, functionToBackground func(*Metrics)) {

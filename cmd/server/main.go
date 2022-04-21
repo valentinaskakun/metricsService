@@ -31,17 +31,16 @@ func listMetrics(w http.ResponseWriter, r *http.Request) {
 }
 func updateMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(r.RequestURI + "\n"))
-	var splitUrl []string
-	splitUrl = strings.Split(r.RequestURI, "/")
-	if len(splitUrl) == 5 {
-		if splitUrl[2] == "gauge" {
-			metricName := splitUrl[3]
-			metricValue, _ := strconv.ParseFloat(splitUrl[4], 64)
+	splitURL := strings.Split(r.RequestURI, "/")
+	if len(splitURL) == 5 {
+		if splitURL[2] == "gauge" {
+			metricName := splitURL[3]
+			metricValue, _ := strconv.ParseFloat(splitURL[4], 64)
 			MetricsRun.gaugeMetric[metricName] = metricValue
 		}
-		if splitUrl[2] == "counter" {
-			metricName := splitUrl[3]
-			metricValue, _ := strconv.ParseInt(splitUrl[4], 10, 64)
+		if splitURL[2] == "counter" {
+			metricName := splitURL[3]
+			metricValue, _ := strconv.ParseInt(splitURL[4], 10, 64)
 			MetricsRun.counterMetric[metricName] += metricValue
 		}
 	}
