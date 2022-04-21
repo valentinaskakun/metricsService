@@ -101,10 +101,6 @@ func sendPOST(urlAction string, urlMetricType string, urlMetricKey string, urlMe
 		return resEmpty
 	}
 	res, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return res
-	}
 	defer res.Body.Close()
 	if err != nil {
 		fmt.Println(err)
