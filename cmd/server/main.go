@@ -31,7 +31,8 @@ func listMetrics(w http.ResponseWriter, r *http.Request) {
 }
 func updateMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(r.RequestURI + "\n"))
-	splitUrl := strings.Split(r.RequestURI, "/")
+	var splitUrl []string
+	splitUrl = strings.Split(r.RequestURI, "/")
 	if len(splitUrl) == 5 {
 		if splitUrl[2] == "gauge" {
 			metricName := splitUrl[3]

@@ -95,6 +95,7 @@ func sendPOST(urlAction string, urlMetricType string, urlMetricKey string, urlMe
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, nil)
 	resEmpty := new(http.Response)
+	defer resEmpty.Body.Close()
 	req.Header.Add("Content-Type", "Content-Type: text/plain")
 	if err != nil {
 		fmt.Println(err)
@@ -104,7 +105,7 @@ func sendPOST(urlAction string, urlMetricType string, urlMetricKey string, urlMe
 	defer res.Body.Close()
 	if err != nil {
 		fmt.Println(err)
-		return res
+		return resEmpty
 	}
 	return res
 }
