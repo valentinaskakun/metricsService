@@ -31,19 +31,18 @@ func listMetricsAll(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func listMetric(w http.ResponseWriter, r *http.Request) {
-	//fmt.Fprintln(w, "METRIC:")
+	//fmt.Println("bogdan listMetric")
 	metricType := chi.URLParam(r, "metricType")
 	metricName := chi.URLParam(r, "metricName")
-	//fmt.Fprintln(w, "bogdan update:"+chi.URLParam(r, "metricType"))
 	if metricType == "gauge" {
-		fmt.Println("bogdan listMetric gauge:" + chi.URLParam(r, "metricType"))
+		//fmt.Println("bogdan listMetric gauge:" + chi.URLParam(r, "metricType"))
 		if val, ok := MetricsRun.gaugeMetric[metricName]; ok {
 			fmt.Fprintln(w, val)
 		} else {
 			w.WriteHeader(404)
 		}
 	} else if metricType == "counter" {
-		fmt.Println("bogdan listMetric counter:" + chi.URLParam(r, "metricType"))
+		//fmt.Println("bogdan listMetric counter:" + chi.URLParam(r, "metricType"))
 		if val, ok := MetricsRun.counterMetric[metricName]; ok {
 			fmt.Fprintln(w, val)
 		} else {
@@ -63,7 +62,6 @@ func updateMetrics(w http.ResponseWriter, r *http.Request) {
 	metricValue := chi.URLParam(r, "metricValue")
 	//fmt.Fprintln(w, "bogdan update:"+chi.URLParam(r, "metricType"))
 	if metricType == "gauge" {
-		fmt.Println("bogdan gauge:" + chi.URLParam(r, "metricType"))
 		valParsed, err := strconv.ParseFloat(metricValue, 64)
 		if err != nil {
 			w.WriteHeader(400)
@@ -71,7 +69,6 @@ func updateMetrics(w http.ResponseWriter, r *http.Request) {
 			MetricsRun.gaugeMetric[metricName] = valParsed
 		}
 	} else if metricType == "counter" {
-		fmt.Println("bogdan counter:" + chi.URLParam(r, "metricType"))
 		valParsed, err := strconv.ParseInt(metricValue, 10, 64)
 		if err != nil {
 			w.WriteHeader(400)
@@ -79,7 +76,6 @@ func updateMetrics(w http.ResponseWriter, r *http.Request) {
 			MetricsRun.counterMetric[metricName] = valParsed
 		}
 	} else {
-		fmt.Println("bogdan else:" + chi.URLParam(r, "metricType"))
 		w.WriteHeader(501)
 	}
 }
@@ -88,14 +84,16 @@ func main() {
 	MetricsRun.gaugeMetric = make(map[string]float64)
 	MetricsRun.counterMetric = make(map[string]int64)
 	r := chi.NewRouter()
-	r.Post("/", listMetricsAll)
+	r.Get("/", listMetricsAll)
 	r.Route("/update", func(r chi.Router) {
 		r.Route("/{metricType}", func(r chi.Router) {
 			r.Post("/{metricName}/{metricValue}", updateMetrics)
 		})
 	})
-	r.Route("/{metricType}", func(r chi.Router) {
-		r.Get("/{metricName}/", listMetric)
+	r.Route("/value", func(r chi.Router) {
+		r.Route("/{metricType}", func(r chi.Router) {
+			r.Get("/{metricName}", listMetric)
+		})
 	})
 	//r.Get("/update/{metricType}/{metricName}/{metricValue}", updateMetrics)
 	//r.Route("/{carID}", func(r chi.Router) {
