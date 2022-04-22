@@ -77,16 +77,16 @@ func updateMetrics(metricsToUpdate Metrics) {
 func sendMetrics(metricsToSend Metrics) {
 	for key, value := range metricsToSend.gaugeMetric {
 		//fmt.Println("sendMetrics gauge", key, value)
-		sendPOST("update", "gauge", key, fmt.Sprintf("%f", value)).Body.Close()
+		sendPOST("update", "gauge", key, fmt.Sprintf("%f", value))
 		//fmt.Println(test.StatusCode)
 	}
 	for key, value := range metricsToSend.counterMetric {
 		//fmt.Println("sendMetrics counter", key, value)
-		sendPOST("update", "counter", key, strconv.FormatInt(value, 10)).Body.Close()
+		sendPOST("update", "counter", key, strconv.FormatInt(value, 10))
 	}
 	//fmt.Println("counter", metricsToSend.counterMetric["pollCount"])
 }
-func sendPOST(urlAction string, urlMetricType string, urlMetricKey string, urlMetricValue string) *http.Response {
+func sendPOST(urlAction string, urlMetricType string, urlMetricKey string, urlMetricValue string) {
 	//http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
 	url := serverToSendProto + "://" + serverToSendAddress + "/" + urlAction + "/"
 	url += urlMetricType + "/" + urlMetricKey + "/" + urlMetricValue
@@ -94,24 +94,19 @@ func sendPOST(urlAction string, urlMetricType string, urlMetricKey string, urlMe
 	//contentType := "Content-Type: text/plain"
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, nil)
-	resEmpty := new(http.Response)
 	//defer resEmpty.Body.Close()
 	req.Header.Add("Content-Type", "Content-Type: text/plain")
+	fmt.Println(url)
 	if err != nil {
 		fmt.Println(err)
-		resEmpty.Body.Close()
-		return resEmpty
+		return
 	}
-	res, err := client.Do(req)
+	client.Do(req)
 	if err != nil {
 		fmt.Println(err)
-		res.Body.Close()
-		resEmpty.Body.Close()
-		return resEmpty
+		return
 	}
-	resEmpty.Body.Close()
-	res.Body.Close()
-	return res
+	return
 }
 func inBackgroundMetrics(tickerToBackground *time.Ticker, metricsToBackground *Metrics, functionToBackground func(*Metrics)) {
 	for range tickerToBackground.C {
@@ -148,5 +143,4 @@ func main() {
 		}
 	}()
 	select {}
-
 }
