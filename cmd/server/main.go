@@ -79,7 +79,7 @@ func main() {
 	r.Post("/", listMetrics)
 	r.Route("/update", func(r chi.Router) {
 		r.Route("/{metricType}", func(r chi.Router) {
-			r.Get("/{metricName}/{metricValue}", updateMetrics)
+			r.Post("/{metricName}/{metricValue}", updateMetrics)
 		})
 	})
 
