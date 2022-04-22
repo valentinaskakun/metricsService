@@ -31,7 +31,7 @@ func listMetrics(w http.ResponseWriter, r *http.Request) {
 
 }
 func updateMetrics(w http.ResponseWriter, r *http.Request) {
-	//fmt.Fprintln(w, r.RequestURI)
+	fmt.Println("ya tut", r.RequestURI)
 	//w.WriteHeader(http.StatusOK)
 	metricType := chi.URLParam(r, "metricType")
 	//fmt.Fprintln(w, "bogdan update:"+chi.URLParam(r, "metricType"))
@@ -65,6 +65,13 @@ func main() {
 	MetricsRun.counterMetric = make(map[string]int64)
 	r := chi.NewRouter()
 	r.Get("/", listMetrics)
-	r.Get("/update/{metricType}/{metricName}/{metricValue}", updateMetrics)
+	r.Route("/update", func(r chi.Router) {
+		r.Route("/{metricType}", func(r chi.Router) {
+			r.Post("/{metricName}/{metricValue}", updateMetrics)
+		})
+	})
+
+	//r.Get("/update/{metricType}/{metricName}/{metricValue}", updateMetrics)
+	//r.Route("/{carID}", func(r chi.Router) {
 	log.Fatal(http.ListenAndServe(serverToGetAddress, r))
 }
