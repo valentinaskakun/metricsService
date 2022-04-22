@@ -73,7 +73,7 @@ func updateMetrics(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			w.WriteHeader(400)
 		} else {
-			MetricsRun.counterMetric[metricName] = valParsed
+			MetricsRun.counterMetric[metricName] += valParsed
 		}
 	} else {
 		w.WriteHeader(501)
