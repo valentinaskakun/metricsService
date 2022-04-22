@@ -20,16 +20,41 @@ var serverToGetAddress = "127.0.0.1:8080"
 var MetricsRun Metrics
 
 //var serverToGetProto = "http"
-func listMetrics(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "METRICS:")
+func listMetricsAll(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "METRICS GAUGE:")
 	for key, value := range MetricsRun.gaugeMetric {
 		fmt.Fprintln(w, key, value)
 	}
+	fmt.Fprintln(w, "METRICS COUNTER:")
 	for key, value := range MetricsRun.counterMetric {
 		fmt.Fprintln(w, key, value)
 	}
-
 }
+func listMetric(w http.ResponseWriter, r *http.Request) {
+	//fmt.Fprintln(w, "METRIC:")
+	metricType := chi.URLParam(r, "metricType")
+	metricName := chi.URLParam(r, "metricName")
+	//fmt.Fprintln(w, "bogdan update:"+chi.URLParam(r, "metricType"))
+	if metricType == "gauge" {
+		fmt.Println("bogdan listMetric gauge:" + chi.URLParam(r, "metricType"))
+		if val, ok := MetricsRun.gaugeMetric[metricName]; ok {
+			fmt.Fprintln(w, val)
+		} else {
+			w.WriteHeader(404)
+		}
+	} else if metricType == "counter" {
+		fmt.Println("bogdan listMetric counter:" + chi.URLParam(r, "metricType"))
+		if val, ok := MetricsRun.counterMetric[metricName]; ok {
+			fmt.Fprintln(w, val)
+		} else {
+			w.WriteHeader(404)
+		}
+	} else {
+		w.WriteHeader(501)
+	}
+}
+
+//разнести по типам (?)
 func updateMetrics(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("ya zdes", r.RequestURI)
 	//w.WriteHeader(http.StatusOK)
@@ -57,32 +82,21 @@ func updateMetrics(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("bogdan else:" + chi.URLParam(r, "metricType"))
 		w.WriteHeader(501)
 	}
-	//splitURL := strings.Split(r.RequestURI, "/")
-	//if len(splitURL) == 5 {
-	//	if splitURL[2] == "gauge" {
-	//		metricName := splitURL[3]
-	//		metricValue, _ := strconv.ParseFloat(splitURL[4], 64)
-	//		MetricsRun.gaugeMetric[metricName] = metricValue
-	//	}
-	//	if splitURL[2] == "counter" {
-	//		metricName := splitURL[3]
-	//		metricValue, _ := strconv.ParseInt(splitURL[4], 10, 64)
-	//		MetricsRun.counterMetric[metricName] += metricValue
-	//	}
-	//}
 }
 
 func main() {
 	MetricsRun.gaugeMetric = make(map[string]float64)
 	MetricsRun.counterMetric = make(map[string]int64)
 	r := chi.NewRouter()
-	r.Post("/", listMetrics)
+	r.Post("/", listMetricsAll)
 	r.Route("/update", func(r chi.Router) {
 		r.Route("/{metricType}", func(r chi.Router) {
 			r.Post("/{metricName}/{metricValue}", updateMetrics)
 		})
 	})
-
+	r.Route("/{metricType}", func(r chi.Router) {
+		r.Get("/{metricName}/", listMetric)
+	})
 	//r.Get("/update/{metricType}/{metricName}/{metricValue}", updateMetrics)
 	//r.Route("/{carID}", func(r chi.Router) {
 	log.Fatal(http.ListenAndServe(serverToGetAddress, r))

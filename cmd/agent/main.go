@@ -94,18 +94,17 @@ func sendPOST(urlAction string, urlMetricType string, urlMetricKey string, urlMe
 	//contentType := "Content-Type: text/plain"
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	req.Header.Add("Content-Type", "Content-Type: text/plain")
-	fmt.Println(url)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
 	res, err := client.Do(req)
-	defer res.Body.Close()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	defer res.Body.Close()
 }
 func inBackgroundMetrics(tickerToBackground *time.Ticker, metricsToBackground *Metrics, functionToBackground func(*Metrics)) {
 	for range tickerToBackground.C {
