@@ -31,19 +31,31 @@ func listMetrics(w http.ResponseWriter, r *http.Request) {
 
 }
 func updateMetrics(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("ya tut", r.RequestURI)
+	fmt.Println("ya zdes", r.RequestURI)
 	//w.WriteHeader(http.StatusOK)
 	metricType := chi.URLParam(r, "metricType")
+	metricName := chi.URLParam(r, "metricName")
+	metricValue := chi.URLParam(r, "metricValue")
 	//fmt.Fprintln(w, "bogdan update:"+chi.URLParam(r, "metricType"))
 	if metricType == "gauge" {
-		fmt.Fprintln(w, "bogdan gauge:"+chi.URLParam(r, "metricType"))
-		MetricsRun.gaugeMetric[chi.URLParam(r, "metricName")], _ = strconv.ParseFloat(chi.URLParam(r, "metricValue"), 64)
+		fmt.Println("bogdan gauge:" + chi.URLParam(r, "metricType"))
+		valParsed, err := strconv.ParseFloat(metricValue, 64)
+		if err != nil {
+			w.WriteHeader(400)
+		} else {
+			MetricsRun.gaugeMetric[metricName] = valParsed
+		}
 	} else if metricType == "counter" {
 		fmt.Fprintln(w, "bogdan counter:"+chi.URLParam(r, "metricType"))
-		MetricsRun.counterMetric[chi.URLParam(r, "metricName")], _ = strconv.ParseInt(chi.URLParam(r, "metricValue"), 10, 64)
+		valParsed, err := strconv.ParseInt(metricValue, 10, 64)
+		if err != nil {
+			w.WriteHeader(400)
+		} else {
+			MetricsRun.counterMetric[metricName] = valParsed
+		}
 	} else {
 		fmt.Println("bogdan else:" + chi.URLParam(r, "metricType"))
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(501)
 	}
 	//splitURL := strings.Split(r.RequestURI, "/")
 	//if len(splitURL) == 5 {
@@ -64,10 +76,10 @@ func main() {
 	MetricsRun.gaugeMetric = make(map[string]float64)
 	MetricsRun.counterMetric = make(map[string]int64)
 	r := chi.NewRouter()
-	r.Get("/", listMetrics)
+	r.Post("/", listMetrics)
 	r.Route("/update", func(r chi.Router) {
 		r.Route("/{metricType}", func(r chi.Router) {
-			r.Post("/{metricName}/{metricValue}", updateMetrics)
+			r.Get("/{metricName}/{metricValue}", updateMetrics)
 		})
 	})
 
