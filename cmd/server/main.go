@@ -46,7 +46,7 @@ func updateMetrics(w http.ResponseWriter, r *http.Request) {
 			MetricsRun.gaugeMetric[metricName] = valParsed
 		}
 	} else if metricType == "counter" {
-		fmt.Fprintln(w, "bogdan counter:"+chi.URLParam(r, "metricType"))
+		fmt.Println("bogdan counter:" + chi.URLParam(r, "metricType"))
 		valParsed, err := strconv.ParseInt(metricValue, 10, 64)
 		if err != nil {
 			w.WriteHeader(400)
