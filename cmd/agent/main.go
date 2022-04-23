@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/go-resty/resty/v2"
-	"github.com/valentinaskakun/metricsService/internal/metricsruntime"
+	"github.com/valentinaskakun/metricsService.git/internal/metricsruntime"
 	"math/rand"
 	"net/url"
 	"os"
