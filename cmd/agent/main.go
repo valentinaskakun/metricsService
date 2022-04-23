@@ -110,25 +110,20 @@ func main() {
 		}
 	}()
 	go func() {
-		for {
-			select {
-			case <-tickerPoll.C:
-				MetricsCurrent.Lock()
-				MetricsCurrent.gaugeMetric = updateGaugeMetrics()
-				MetricsCurrent.counterMetric = updateCounterMetrics("add", MetricsCurrent.counterMetric)
-				MetricsCurrent.Unlock()
-			}
+		for range tickerPoll.C {
+			MetricsCurrent.Lock()
+			MetricsCurrent.gaugeMetric = updateGaugeMetrics()
+			MetricsCurrent.counterMetric = updateCounterMetrics("add", MetricsCurrent.counterMetric)
+			MetricsCurrent.Unlock()
 		}
+
 	}()
 	go func() {
-		for {
-			select {
-			case <-tickerReport.C:
-				sendMetrics(&MetricsCurrent, serverToSend)
-				MetricsCurrent.Lock()
-				MetricsCurrent.counterMetric = updateCounterMetrics("init", MetricsCurrent.counterMetric)
-				MetricsCurrent.Unlock()
-			}
+		for range tickerReport.C {
+			sendMetrics(&MetricsCurrent, serverToSend)
+			MetricsCurrent.Lock()
+			MetricsCurrent.counterMetric = updateCounterMetrics("init", MetricsCurrent.counterMetric)
+			MetricsCurrent.Unlock()
 		}
 	}()
 	select {}
