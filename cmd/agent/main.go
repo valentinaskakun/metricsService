@@ -2,114 +2,111 @@ package main
 
 import (
 	"fmt"
+	"github.com/go-resty/resty/v2"
+	"internal/metricsruntime"
 	"math/rand"
-	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
-	"runtime"
+	"path"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 )
 
-type MetricGauge struct {
-	metricName  string
-	metricValue float64
-}
-type MetricCount struct {
-	metricName  string
-	metricValue int
-}
 type Metrics struct {
 	gaugeMetric   map[string]float64
 	counterMetric map[string]int64
 	timeMetric    time.Time
+	sync.RWMutex
 }
 
 var pollInterval time.Duration = 2000    //Milliseconds
 var reportInterval time.Duration = 10000 //Milliseconds
-var serverToSendAddress = "127.0.0.1:8080"
-var serverToSendProto = "http"
+var serverToSendProto = "http://"
+var serverToSend = serverToSendProto + "127.0.0.1:8080"
+var metricsListConfig = map[string]bool{"Alloc": true, "BuckHashSys": true, "Frees": true, "GCCPUFraction": true, "GCSys": true, "HeapAlloc": true, "HeapIdle": true, "HeapInuse": true, "HeapObjects": true, "HeapReleased": true, "HeapSys": true, "LastGC": true, "Lookups": true, "MCacheInuse": true, "MCacheSys": true, "MSpanInuse": true, "MSpanSys": true, "Mallocs": true, "NextGC": true, "NumForcedGC": true, "NumGC": true, "OtherSys": true, "PauseTotalNs": true, "StackInuse": true, "StackSys": true, "Sys": true, "TotalAlloc": true, "pollCount": true}
+var MetricsCurrent Metrics
 
-//добавить возможность вытаскивать конфиг только по нужным метрикам (?)
-//var configMetrics = []string{"alloc", "buckHashSys"}
+//добавить обработку ошибок
+func updateGaugeMetrics() (metricsGaugeUpdated map[string]float64) {
+	metricsGaugeUpdated = make(map[string]float64)
+	tempCurrentMemStatsMetrics := metricsruntime.GetCurrentValuesRuntimeGauge()
+	for key, value := range tempCurrentMemStatsMetrics {
+		if _, ok := metricsListConfig[key]; ok {
+			metricsGaugeUpdated[key] = value
+		}
+	}
+	metricsGaugeUpdated["randomValue"] = rand.Float64()
+	return metricsGaugeUpdated
+}
+func updateCounterMetrics(action string, metricsCounterToUpdate map[string]int64) (metricsCounterUpdated map[string]int64) {
+	metricsCounterUpdated = make(map[string]int64)
+	metricsCounterUpdated["pollCount"] = 1
+	switch {
+	case action == "add":
+		for key, value := range metricsCounterToUpdate {
+			if _, ok := metricsListConfig[key]; ok {
+				metricsCounterUpdated[key] = value + 1
+			}
+		}
+	case action == "init":
+		for key := range metricsCounterToUpdate {
+			if _, ok := metricsListConfig[key]; ok {
+				metricsCounterUpdated[key] = 0
+			}
+		}
+	}
+	fmt.Println(action)
+	return metricsCounterUpdated
+}
 
-func getCurrentRuntimeMemStats() (currentMemStats runtime.MemStats) {
-	runtime.ReadMemStats(&currentMemStats)
-	return currentMemStats
-}
-func updateValuesRuntime(currentMemStats runtime.MemStats, metricsForUpdate Metrics) {
-	metricsForUpdate.gaugeMetric["Alloc"] = float64(currentMemStats.Alloc)
-	metricsForUpdate.gaugeMetric["BuckHashSys"] = float64(currentMemStats.BuckHashSys)
-	metricsForUpdate.gaugeMetric["Frees"] = float64(currentMemStats.Frees)
-	metricsForUpdate.gaugeMetric["GCCPUFraction"] = float64(currentMemStats.GCCPUFraction)
-	metricsForUpdate.gaugeMetric["GCSys"] = float64(currentMemStats.GCSys)
-	metricsForUpdate.gaugeMetric["HeapAlloc"] = float64(currentMemStats.HeapAlloc)
-	metricsForUpdate.gaugeMetric["HeapIdle"] = float64(currentMemStats.HeapIdle)
-	metricsForUpdate.gaugeMetric["HeapInuse"] = float64(currentMemStats.HeapInuse)
-	metricsForUpdate.gaugeMetric["HeapObjects"] = float64(currentMemStats.HeapObjects)
-	metricsForUpdate.gaugeMetric["HeapReleased"] = float64(currentMemStats.HeapReleased)
-	metricsForUpdate.gaugeMetric["HeapSys"] = float64(currentMemStats.HeapSys)
-	metricsForUpdate.gaugeMetric["LastGC"] = float64(currentMemStats.LastGC)
-	metricsForUpdate.gaugeMetric["Lookups"] = float64(currentMemStats.Lookups)
-	metricsForUpdate.gaugeMetric["MCacheInuse"] = float64(currentMemStats.MCacheInuse)
-	metricsForUpdate.gaugeMetric["MCacheSys"] = float64(currentMemStats.MCacheSys)
-	metricsForUpdate.gaugeMetric["MSpanInuse"] = float64(currentMemStats.MSpanInuse)
-	metricsForUpdate.gaugeMetric["MSpanSys"] = float64(currentMemStats.MSpanSys)
-	metricsForUpdate.gaugeMetric["Mallocs"] = float64(currentMemStats.Mallocs)
-	metricsForUpdate.gaugeMetric["NextGC"] = float64(currentMemStats.NextGC)
-	metricsForUpdate.gaugeMetric["NumForcedGC"] = float64(currentMemStats.NumForcedGC)
-	metricsForUpdate.gaugeMetric["NumGC"] = float64(currentMemStats.NumGC)
-	metricsForUpdate.gaugeMetric["OtherSys"] = float64(currentMemStats.OtherSys)
-	metricsForUpdate.gaugeMetric["PauseTotalNs"] = float64(currentMemStats.PauseTotalNs)
-	metricsForUpdate.gaugeMetric["StackInuse"] = float64(currentMemStats.StackInuse)
-	metricsForUpdate.gaugeMetric["StackSys"] = float64(currentMemStats.StackSys)
-	metricsForUpdate.gaugeMetric["Sys"] = float64(currentMemStats.Sys)
-	metricsForUpdate.gaugeMetric["TotalAlloc"] = float64(currentMemStats.TotalAlloc)
-}
-func updateMetrics(metricsToUpdate Metrics) {
-	updateValuesRuntime(getCurrentRuntimeMemStats(), metricsToUpdate)
-	metricsToUpdate.counterMetric["pollCount"] += 1
-	metricsToUpdate.gaugeMetric["randomValue"] = rand.Float64()
-	metricsToUpdate.timeMetric = time.Now()
-	fmt.Println(time.Now(), "updating")
-}
-func sendMetrics(metricsToSend Metrics) {
-	for key, value := range metricsToSend.gaugeMetric {
-		//fmt.Println("sendMetrics gauge", key, value)
-		sendPOST("update", "gauge", key, fmt.Sprintf("%f", value))
-		//fmt.Println(test.StatusCode)
+//func updateMetrics(metricsToUpdate *Metrics) (metricReady Metrics) {
+//	fmt.Println(time.Now(), "updating")
+//	metricsToUpdate.gaugeMetric = make(map[string]float64)
+//	metricsToUpdate.counterMetric = make(map[string]int64)
+//	tempCurrentMemStatsMetrics := metricsruntime.GetCurrentValuesRuntimeGauge()
+//	for key, value := range tempCurrentMemStatsMetrics {
+//		if _, ok := metricsListConfig[key]; ok {
+//			metricsToUpdate.gaugeMetric[key] = value
+//		}
+//	}
+//	metricsToUpdate.counterMetric["pollCount"] += 1
+//	metricsToUpdate.gaugeMetric["randomValue"] = rand.Float64()
+//	metricsToUpdate.Unlock()
+//	return metricReady
+//}
+func sendMetrics(metricsToSend *Metrics, serverToSendLink string) {
+	if metricsToSend.counterMetric["pollCount"] != 0 {
+		for key, value := range metricsToSend.gaugeMetric {
+			urlStr, err := url.Parse(serverToSendLink)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			urlStr.Path = path.Join(urlStr.Path, "update", "gauge", key, fmt.Sprintf("%f", value))
+			sendPOST(urlStr.String())
+		}
+		for key, value := range metricsToSend.counterMetric {
+			urlStr, err := url.Parse(serverToSendLink)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			urlStr.Path = path.Join(urlStr.Path, "update", "counter", key, strconv.FormatInt(value, 10))
+			sendPOST(urlStr.String())
+		}
 	}
-	for key, value := range metricsToSend.counterMetric {
-		//fmt.Println("sendMetrics counter", key, value)
-		sendPOST("update", "counter", key, strconv.FormatInt(value, 10))
-	}
-	//fmt.Println("counter", metricsToSend.counterMetric["pollCount"])
 }
-func sendPOST(urlAction string, urlMetricType string, urlMetricKey string, urlMetricValue string) {
-	//http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
-	url := serverToSendProto + "://" + serverToSendAddress + "/" + urlAction + "/"
-	url += urlMetricType + "/" + urlMetricKey + "/" + urlMetricValue
-	method := "POST"
-	//contentType := "Content-Type: text/plain"
-	client := &http.Client{}
-	req, err := http.NewRequest(method, url, nil)
+func sendPOST(urlString string) {
+	client := resty.New()
+	_, err := client.R().
+		SetHeader("Content-Type", "Content-Type: text/plain").
+		Post(urlString)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("ERROR POST " + urlString)
 		return
-	}
-	req.Header.Add("Content-Type", "Content-Type: text/plain")
-	res, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer res.Body.Close()
-}
-func inBackgroundMetrics(tickerToBackground *time.Ticker, metricsToBackground *Metrics, functionToBackground func(*Metrics)) {
-	for range tickerToBackground.C {
-		functionToBackground(metricsToBackground)
-		fmt.Println(tickerToBackground, " ticking")
 	}
 }
 func handleSignal(signal os.Signal) {
@@ -119,9 +116,9 @@ func handleSignal(signal os.Signal) {
 func main() {
 	tickerPoll := time.NewTicker(time.Millisecond * pollInterval)
 	tickerReport := time.NewTicker(time.Millisecond * reportInterval)
-	var metricsAgent Metrics
-	metricsAgent.gaugeMetric = make(map[string]float64)
-	metricsAgent.counterMetric = make(map[string]int64)
+	//var metricsAgent Metrics
+	//	MetricsCurrent.gaugeMetric = make(map[string]float64)
+	//	MetricsCurrent.counterMetric = make(map[string]int64)
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
 	go func() {
@@ -134,9 +131,21 @@ func main() {
 		for {
 			select {
 			case <-tickerPoll.C:
-				updateMetrics(metricsAgent)
+				MetricsCurrent.Lock()
+				MetricsCurrent.gaugeMetric = updateGaugeMetrics()
+				MetricsCurrent.counterMetric = updateCounterMetrics("add", MetricsCurrent.counterMetric)
+				MetricsCurrent.Unlock()
+			}
+		}
+	}()
+	go func() {
+		for {
+			select {
 			case <-tickerReport.C:
-				sendMetrics(metricsAgent)
+				sendMetrics(&MetricsCurrent, serverToSend)
+				MetricsCurrent.Lock()
+				MetricsCurrent.counterMetric = updateCounterMetrics("init", MetricsCurrent.counterMetric)
+				MetricsCurrent.Unlock()
 			}
 		}
 	}()
