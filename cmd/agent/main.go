@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/go-resty/resty/v2"
-	"internal/metricsruntime"
+	"github.com/valentinaskakun/metricsService/internal/metricsruntime"
 	"math/rand"
 	"net/url"
 	"os"
@@ -62,21 +62,6 @@ func updateCounterMetrics(action string, metricsCounterToUpdate map[string]int64
 	return metricsCounterUpdated
 }
 
-//func updateMetrics(metricsToUpdate *Metrics) (metricReady Metrics) {
-//	fmt.Println(time.Now(), "updating")
-//	metricsToUpdate.gaugeMetric = make(map[string]float64)
-//	metricsToUpdate.counterMetric = make(map[string]int64)
-//	tempCurrentMemStatsMetrics := metricsruntime.GetCurrentValuesRuntimeGauge()
-//	for key, value := range tempCurrentMemStatsMetrics {
-//		if _, ok := metricsListConfig[key]; ok {
-//			metricsToUpdate.gaugeMetric[key] = value
-//		}
-//	}
-//	metricsToUpdate.counterMetric["pollCount"] += 1
-//	metricsToUpdate.gaugeMetric["randomValue"] = rand.Float64()
-//	metricsToUpdate.Unlock()
-//	return metricReady
-//}
 func sendMetrics(metricsToSend *Metrics, serverToSendLink string) {
 	if metricsToSend.counterMetric["pollCount"] != 0 {
 		for key, value := range metricsToSend.gaugeMetric {
@@ -116,9 +101,6 @@ func handleSignal(signal os.Signal) {
 func main() {
 	tickerPoll := time.NewTicker(time.Millisecond * pollInterval)
 	tickerReport := time.NewTicker(time.Millisecond * reportInterval)
-	//var metricsAgent Metrics
-	//	MetricsCurrent.gaugeMetric = make(map[string]float64)
-	//	MetricsCurrent.counterMetric = make(map[string]int64)
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
 	go func() {
