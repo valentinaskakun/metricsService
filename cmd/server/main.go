@@ -22,6 +22,7 @@ var serverToGetAddress = "127.0.0.1:8080"
 
 var MetricsRun Metrics
 
+//todo: вынести хэндлеры в интернал
 func listMetricsAll(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "METRICS GAUGE:")
 	for key, value := range MetricsRun.gaugeMetric {
@@ -52,7 +53,7 @@ func listMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//разнести по типам (?)
+//todo: разнести по типам (?)
 func updateMetrics(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metricType")
 	metricName := chi.URLParam(r, "metricName")

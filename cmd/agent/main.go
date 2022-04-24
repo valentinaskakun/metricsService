@@ -29,7 +29,7 @@ var serverToSend = serverToSendProto + "127.0.0.1:8080"
 var metricsListConfig = map[string]bool{"Alloc": true, "BuckHashSys": true, "Frees": true, "GCCPUFraction": true, "GCSys": true, "HeapAlloc": true, "HeapIdle": true, "HeapInuse": true, "HeapObjects": true, "HeapReleased": true, "HeapSys": true, "LastGC": true, "Lookups": true, "MCacheInuse": true, "MCacheSys": true, "MSpanInuse": true, "MSpanSys": true, "Mallocs": true, "NextGC": true, "NumForcedGC": true, "NumGC": true, "OtherSys": true, "PauseTotalNs": true, "StackInuse": true, "StackSys": true, "Sys": true, "TotalAlloc": true, "pollCount": true}
 var MetricsCurrent Metrics
 
-//добавить обработку ошибок
+//todo: добавить обработку ошибок
 func updateGaugeMetrics() (metricsGaugeUpdated map[string]float64) {
 	metricsGaugeUpdated = make(map[string]float64)
 	tempCurrentMemStatsMetrics := metricsruntime.GetCurrentValuesRuntimeGauge()
@@ -43,7 +43,10 @@ func updateGaugeMetrics() (metricsGaugeUpdated map[string]float64) {
 }
 func updateCounterMetrics(action string, metricsCounterToUpdate map[string]int64) (metricsCounterUpdated map[string]int64) {
 	metricsCounterUpdated = make(map[string]int64)
-	metricsCounterUpdated["pollCount"] = 1
+	if _, ok := metricsCounterToUpdate["pollCount"]; !ok {
+		metricsCounterToUpdate = make(map[string]int64)
+		metricsCounterToUpdate["pollCount"] = 0
+	}
 	switch {
 	case action == "add":
 		for key, value := range metricsCounterToUpdate {
@@ -58,7 +61,6 @@ func updateCounterMetrics(action string, metricsCounterToUpdate map[string]int64
 			}
 		}
 	}
-	fmt.Println(action)
 	return metricsCounterUpdated
 }
 
