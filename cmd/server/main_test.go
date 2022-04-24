@@ -13,7 +13,7 @@ var serverAddr = "http://127.0.0.1:8080"
 
 //todo: поменять ее на импортированную из репо
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
-	req, err := http.NewRequest(method, ts.URL+path, body)
+	req, _ := http.NewRequest(method, ts.URL+path, body)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -54,10 +54,10 @@ func TestPostGetMetrics(t *testing.T) {
 	req, _ := http.NewRequest("POST", ts.URL+testUpdateLink, nil)
 	req.Header.Set("Content-Type", "Content-Type: text/plain")
 	res, err := http.DefaultClient.Do(req)
-	defer res.Body.Close()
 	if err != nil {
 		t.Errorf("Url %v ERROR: %v", testUpdateLink, err)
 	} else if res.StatusCode != 200 {
 		t.Errorf("URL %v code %v", testUpdateLink, res.StatusCode)
 	}
+	res.Body.Close()
 }
