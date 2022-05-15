@@ -166,7 +166,7 @@ func main() {
 			sendMetricJSON(&MetricsCurrent, serverToSend)
 			MetricsCurrent.muCounter.Lock()
 			MetricsCurrent.counterMetric = updateCounterMetrics("init", MetricsCurrent.counterMetric)
-			MetricsCurrent.muCounter.Unlock()
+			MetricsCurrent.muCounter.Unlock()git
 		}
 	}()
 	select {}
