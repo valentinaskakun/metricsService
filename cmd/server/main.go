@@ -12,10 +12,11 @@ import (
 
 //вынести структуру в модуль (?)
 type Metrics struct {
+	muGauge       sync.RWMutex
 	gaugeMetric   map[string]float64
+	muCounter     sync.RWMutex
 	counterMetric map[string]int64
 	timeMetric    time.Time
-	sync.RWMutex
 }
 
 var serverToGetAddress = "127.0.0.1:8080"
@@ -40,16 +41,16 @@ func listMetric(w http.ResponseWriter, r *http.Request) {
 		if val, ok := MetricsRun.gaugeMetric[metricName]; ok {
 			fmt.Fprintln(w, val)
 		} else {
-			w.WriteHeader(404)
+			w.WriteHeader(http.StatusNotFound)
 		}
 	} else if metricType == "counter" {
 		if val, ok := MetricsRun.counterMetric[metricName]; ok {
 			fmt.Fprintln(w, val)
 		} else {
-			w.WriteHeader(404)
+			w.WriteHeader(http.StatusNotFound)
 		}
 	} else {
-		w.WriteHeader(501)
+		w.WriteHeader(http.StatusNotImplemented)
 	}
 }
 
@@ -63,18 +64,18 @@ func updateMetrics(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			w.WriteHeader(400)
 		} else {
-			MetricsRun.Lock()
+			MetricsRun.muGauge.Lock()
 			MetricsRun.gaugeMetric[metricName] = valParsed
-			MetricsRun.Unlock()
+			MetricsRun.muGauge.Unlock()
 		}
 	} else if metricType == "counter" {
 		valParsed, err := strconv.ParseInt(metricValue, 10, 64)
 		if err != nil {
 			w.WriteHeader(400)
 		} else {
-			MetricsRun.Lock()
+			MetricsRun.muCounter.Lock()
 			MetricsRun.counterMetric[metricName] += valParsed
-			MetricsRun.Unlock()
+			MetricsRun.muCounter.Unlock()
 		}
 	} else {
 		w.WriteHeader(501)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"io/ioutil"
@@ -47,11 +48,12 @@ func TestPostGetMetrics(t *testing.T) {
 	r.Post("/update", updateMetrics)
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", func(w http.ResponseWriter, r *http.Request) {})
 	r.Get("/value", listMetric)
-	r.Get("/update/{metricType}/{metricName}", func(w http.ResponseWriter, r *http.Request) {})
+	r.Get("/value/{metricType}/{metricName}", func(w http.ResponseWriter, r *http.Request) {})
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	testUpdateLink := "/update/counter/testCount/300"
 	req, _ := http.NewRequest("POST", ts.URL+testUpdateLink, nil)
+	fmt.Println(req)
 	req.Header.Set("Content-Type", "Content-Type: text/plain")
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {

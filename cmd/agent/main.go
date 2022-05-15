@@ -16,14 +16,20 @@ import (
 )
 
 type Metrics struct {
+	muGauge       sync.RWMutex
 	gaugeMetric   map[string]float64
+	muCounter     sync.RWMutex
 	counterMetric map[string]int64
 	timeMetric    time.Time
-	sync.RWMutex
 }
 
-var pollInterval time.Duration = 2000    //Milliseconds
-var reportInterval time.Duration = 10000 //Milliseconds
+const (
+	pollIntervalConst   = 2000
+	reportIntervalConst = 10000
+)
+
+var pollInterval time.Duration = pollIntervalConst     //Milliseconds
+var reportInterval time.Duration = reportIntervalConst //Milliseconds
 var serverToSendProto = "http://"
 var serverToSend = serverToSendProto + "127.0.0.1:8080"
 var metricsListConfig = map[string]bool{"Alloc": true, "BuckHashSys": true, "Frees": true, "GCCPUFraction": true, "GCSys": true, "HeapAlloc": true, "HeapIdle": true, "HeapInuse": true, "HeapObjects": true, "HeapReleased": true, "HeapSys": true, "LastGC": true, "Lookups": true, "MCacheInuse": true, "MCacheSys": true, "MSpanInuse": true, "MSpanSys": true, "Mallocs": true, "NextGC": true, "NumForcedGC": true, "NumGC": true, "OtherSys": true, "PauseTotalNs": true, "StackInuse": true, "StackSys": true, "Sys": true, "TotalAlloc": true, "pollCount": true}
@@ -111,21 +117,26 @@ func main() {
 			handleSignal(sig)
 		}
 	}()
+	//todo добавить WG
 	go func() {
 		for range tickerPoll.C {
-			MetricsCurrent.Lock()
+			MetricsCurrent.muGauge.Lock()
+			MetricsCurrent.muCounter.Lock()
 			MetricsCurrent.gaugeMetric = updateGaugeMetrics()
 			MetricsCurrent.counterMetric = updateCounterMetrics("add", MetricsCurrent.counterMetric)
-			MetricsCurrent.Unlock()
+			MetricsCurrent.muCounter.Unlock()
+			MetricsCurrent.muGauge.Unlock()
 		}
 
 	}()
 	go func() {
 		for range tickerReport.C {
 			sendMetrics(&MetricsCurrent, serverToSend)
-			MetricsCurrent.Lock()
+			MetricsCurrent.muGauge.Lock()
+			MetricsCurrent.muCounter.Lock()
 			MetricsCurrent.counterMetric = updateCounterMetrics("init", MetricsCurrent.counterMetric)
-			MetricsCurrent.Unlock()
+			MetricsCurrent.muCounter.Unlock()
+			MetricsCurrent.muGauge.Unlock()
 		}
 	}()
 	select {}
