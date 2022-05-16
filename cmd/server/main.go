@@ -147,6 +147,9 @@ func updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusNotImplemented)
 	}
+	w.WriteHeader(http.StatusOK)
+	resBody, _ := json.Marshal("{}")
+	w.Write(resBody)
 
 	//if response, err := json.Marshal(); err != nil {
 	//	http.Error(w, err.Error(), http.StatusUnprocessableEntity)
