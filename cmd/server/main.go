@@ -123,19 +123,25 @@ func receiveMetricJSON(w http.ResponseWriter, r *http.Request) {
 			GaugeMetric.mutex.Lock()
 			GaugeMetric.metric[m.ID] = *m.Value
 			GaugeMetric.mutex.Unlock()
-			render.JSON(w, r, m)
+			w.WriteHeader(http.StatusOK)
+			resBody, _ := json.Marshal("{}")
+			w.Write(resBody)
 		}
 	} else if m.MType == "counter" {
 		if m.Delta == nil {
 			w.WriteHeader(http.StatusBadRequest)
 			CounterMetric.mutex.Unlock()
-			render.JSON(w, r, m)
+			w.WriteHeader(http.StatusOK)
+			resBody, _ := json.Marshal("{}")
+			w.Write(resBody)
 		} else {
 			previousValue := CounterMetric.metric[m.ID]
 			CounterMetric.mutex.Lock()
 			CounterMetric.metric[m.ID] = *m.Delta + previousValue
 			CounterMetric.mutex.Unlock()
-			render.JSON(w, r, m)
+			w.WriteHeader(http.StatusOK)
+			resBody, _ := json.Marshal("{}")
+			w.Write(resBody)
 		}
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
@@ -154,7 +160,13 @@ func valueOfMetricJSON(w http.ResponseWriter, r *http.Request) {
 	if m.MType == "counter" {
 		if value, ok := CounterMetric.metric[m.ID]; ok {
 			m.Delta = &value
-			render.JSON(w, r, m)
+			if resBody, err := json.Marshal(m); err != nil {
+				http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+				return
+			} else {
+				w.WriteHeader(http.StatusOK)
+				w.Write(resBody)
+			}
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 
@@ -162,7 +174,13 @@ func valueOfMetricJSON(w http.ResponseWriter, r *http.Request) {
 	} else if m.MType == "gauge" {
 		if value, ok := GaugeMetric.metric[m.ID]; ok {
 			m.Value = &value
-			render.JSON(w, r, m)
+			if resBody, err := json.Marshal(m); err != nil {
+				http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+				return
+			} else {
+				w.WriteHeader(http.StatusOK)
+				w.Write(resBody)
+			}
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 		}
