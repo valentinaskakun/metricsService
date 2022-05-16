@@ -170,7 +170,7 @@ func main() {
 	})
 	r.Route("/value", func(r chi.Router) {
 		r.Route("/{metricType}", func(r chi.Router) {
-			r.Post("/{metricName}", listMetric)
+			r.Get("/{metricName}", listMetric)
 		})
 		r.Post("/", listMetricJSON)
 	})
