@@ -195,10 +195,14 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Compress(5))
 	r.Get("/", listMetricsAll)
-	r.Post("/update", updateMetricJSON)
-	r.Post("/value", listMetricJSON)
-	r.Post("/update/{metricType}/{metricName}/{metricValue}", updateMetrics)
-	r.Get("/value/{metricType}/{metricName}", listMetric)
+	r.Route("/update", func(r chi.Router) {
+		r.Post("/", updateMetricJSON)
+		r.Post("/update/{metricType}/{metricName}/{metricValue}", updateMetrics)
+	})
+	r.Route("/value", func(r chi.Router) {
+		r.Post("/", listMetricJSON)
+		r.Get("/value/{metricType}/{metricName}", listMetric)
+	})
 
 	http.ListenAndServe(serverToGetAddress, r)
 }
