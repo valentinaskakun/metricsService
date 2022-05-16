@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
-	"log"
 	"net/http"
 	"strconv"
 	"sync"
@@ -191,15 +191,30 @@ func updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 func main() {
 	GaugeMetric.metric = make(map[string]float64)
 	CounterMetric.metric = make(map[string]int64)
+
 	r := chi.NewRouter()
-	r.Get("/", listMetricsAll)
-	r.Route("/update", func(r chi.Router) {
-		r.Post("/", updateMetricJSON)
-		r.Post("/{metricType}/{metricName}/{metricValue}", updateMetrics)
+	r.Use(middleware.Compress(5))
+	r.Route("/", func(r chi.Router) {
+		r.Get("/", listMetricsAll)
+		r.Post("/{operation}/", func(w http.ResponseWriter, r *http.Request) {
+			operation := chi.URLParam(r, "operation")
+
+			if operation != "update" {
+				w.WriteHeader(404)
+			} else if operation != "value" {
+				w.WriteHeader(404)
+			}
+
+		})
+		r.Post("/update/{metricType}/*", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(404)
+
+		})
+		r.Post("/update", updateMetricJSON)
+		r.Post("/value", listMetricJSON)
+		r.Post("/update/{metricType}/{metricName}/{metricValue}", updateMetrics)
+		r.Get("/value/{metricType}/{metricName}", listMetric)
 	})
-	r.Route("/value", func(r chi.Router) {
-		r.Post("/", listMetricJSON)
-		r.Get("/{metricType}/{metricName}", listMetric)
-	})
-	log.Fatal(http.ListenAndServe(serverToGetAddress, r))
+
+	http.ListenAndServe(serverToGetAddress, r)
 }
