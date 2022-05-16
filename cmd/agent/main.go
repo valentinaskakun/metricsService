@@ -159,7 +159,6 @@ func main() {
 		}
 	}()
 	//todo добавить WG
-	var wg sync.WaitGroup
 	go func() {
 		for range tickerPoll.C {
 			MetricsCurrent.muGauge.Lock()
