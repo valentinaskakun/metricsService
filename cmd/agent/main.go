@@ -161,20 +161,20 @@ func main() {
 	//todo добавить WG
 	go func() {
 		for range tickerPoll.C {
-			//MetricsCurrent.muGauge.Lock()
+			MetricsCurrent.muGauge.Lock()
 			MetricsCurrent.gaugeMetric = updateGaugeMetrics()
-			//MetricsCurrent.muGauge.Unlock()
-			//MetricsCurrent.muCounter.Lock()
+			MetricsCurrent.muGauge.Unlock()
+			MetricsCurrent.muCounter.Lock()
 			MetricsCurrent.counterMetric = updateCounterMetrics("add", MetricsCurrent.counterMetric)
-			//MetricsCurrent.muCounter.Unlock()
+			MetricsCurrent.muCounter.Unlock()
 		}
 	}()
 	go func() {
 		for range tickerReport.C {
 			sendMetricJSON(&MetricsCurrent, serverToSend)
-			//MetricsCurrent.muCounter.Lock()
+			MetricsCurrent.muCounter.Lock()
 			MetricsCurrent.counterMetric = updateCounterMetrics("init", MetricsCurrent.counterMetric)
-			//MetricsCurrent.muCounter.Unlock()
+			MetricsCurrent.muCounter.Unlock()
 		}
 	}()
 	select {}

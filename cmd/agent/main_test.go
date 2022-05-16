@@ -12,10 +12,10 @@ func TestUpdateGaugeMetrics(t *testing.T) {
 }
 func TestUpdateCounterMetrics(t *testing.T) {
 	test := map[string]int64{"pollCount": 6}
-	if updateCounterMetrics("add", test)["pollCount"] != 7 {
+	if updateCounterMetrics("add", test)["PollCount"] != 7 {
 		t.Errorf("pollCount didn't incr")
 	}
-	if updateCounterMetrics("init", test)["pollCount"] != 0 {
+	if updateCounterMetrics("init", test)["PollCount"] != 0 {
 		t.Errorf("pollCount didn't init")
 	}
 }
