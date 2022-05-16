@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/render"
 	"github.com/spf13/viper"
 	"io/ioutil"
 	"net/http"
@@ -112,45 +111,28 @@ type Metrics struct {
 }
 
 func receiveMetricJSON(w http.ResponseWriter, r *http.Request) {
-	var m Metrics
-	err := json.NewDecoder(r.Body).Decode(&m)
+	metricReq := Metrics{}
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		//http.Error(w, err.Error(), http.StatusBadRequest)
 		w.WriteHeader(http.StatusBadRequest)
-		render.JSON(w, r, m)
-		return
 	}
-	if m.MType == "gauge" {
-		if m.Value == nil {
-			w.WriteHeader(http.StatusBadRequest)
-		} else {
-			GaugeMetric.mutex.Lock()
-			GaugeMetric.metric[m.ID] = *m.Value
-			GaugeMetric.mutex.Unlock()
-			w.WriteHeader(http.StatusOK)
-			resBody, _ := json.Marshal("{}")
-			w.Write(resBody)
-		}
-	} else if m.MType == "counter" {
-		if m.Delta == nil {
-			w.WriteHeader(http.StatusBadRequest)
-			CounterMetric.mutex.Unlock()
-			w.WriteHeader(http.StatusOK)
-			resBody, _ := json.Marshal("{}")
-			w.Write(resBody)
-		} else {
-			previousValue := CounterMetric.metric[m.ID]
-			CounterMetric.mutex.Lock()
-			CounterMetric.metric[m.ID] = *m.Delta + previousValue
-			CounterMetric.mutex.Unlock()
-			w.WriteHeader(http.StatusOK)
-			resBody, _ := json.Marshal("{}")
-			w.Write(resBody)
-		}
+	if err := json.Unmarshal(body, &metricReq); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+	if metricReq.MType == "gauge" {
+		//MetricsRun.muGauge.Lock()
+		GaugeMetric.metric[metricReq.ID] = *metricReq.Value
+		//MetricsRun.muGauge.Unlock()
+	} else if metricReq.MType == "counter" {
+		//MetricsRun.muCounter.Lock()
+		CounterMetric.metric[metricReq.ID] += *metricReq.Delta
+		//MetricsRun.muCounter.Unlock()
 	} else {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusNotImplemented)
 	}
-
+	w.WriteHeader(http.StatusOK)
+	resBody, _ := json.Marshal("{}")
+	w.Write(resBody)
 }
 
 func valueOfMetricJSON(w http.ResponseWriter, r *http.Request) {
