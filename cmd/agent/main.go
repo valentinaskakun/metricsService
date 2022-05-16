@@ -98,7 +98,7 @@ func sendPOST(u url.URL, b []byte) {
 	method := "POST"
 	client := &http.Client{}
 
-	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(b))
+	req, err := http.NewRequest(method, "http://localhost:8080/update", bytes.NewBuffer(b))
 	req.Header.Add("Content-Type", "application/json")
 
 	if err != nil {
