@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/valentinaskakun/metricsService/internal/metricsruntime"
@@ -32,7 +33,7 @@ type MetricsJSON struct {
 
 const (
 	pollIntervalConst   = 2000
-	reportIntervalConst = 10000
+	reportIntervalConst = 4000
 )
 
 var pollInterval time.Duration = pollIntervalConst     //Milliseconds
@@ -119,16 +120,24 @@ func sendMetricJSON(metricsToSend *Metrics, serverToSendLink string) {
 		client.R().
 			SetHeader("Content-Type", "Content-Type: application/json")
 		for key, value := range metricsToSend.gaugeMetric {
-			metricToSend := MetricsJSON{ID: key, MType: "gauge", Value: &value}
+			metricToSend, err := json.Marshal(MetricsJSON{ID: key, MType: "gauge", Value: &value})
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 			client.R().
 				SetBody(metricToSend).
-				Post(urlStr.Path)
+				Post(urlStr.String())
 		}
 		for key, value := range metricsToSend.counterMetric {
-			metricToSend := MetricsJSON{ID: key, MType: "counter", Delta: &value}
+			metricToSend, err := json.Marshal(MetricsJSON{ID: key, MType: "counter", Delta: &value})
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 			client.R().
 				SetBody(metricToSend).
-				Post(urlStr.Path)
+				Post(urlStr.String())
 		}
 	} else {
 		fmt.Println("ERROR: " + "pollCounter is 0")
@@ -153,11 +162,11 @@ func main() {
 	go func() {
 		for range tickerPoll.C {
 			MetricsCurrent.muGauge.Lock()
-			MetricsCurrent.muCounter.Lock()
 			MetricsCurrent.gaugeMetric = updateGaugeMetrics()
+			MetricsCurrent.muGauge.Unlock()
+			MetricsCurrent.muCounter.Lock()
 			MetricsCurrent.counterMetric = updateCounterMetrics("add", MetricsCurrent.counterMetric)
 			MetricsCurrent.muCounter.Unlock()
-			MetricsCurrent.muGauge.Unlock()
 		}
 
 	}()
@@ -166,7 +175,7 @@ func main() {
 			sendMetricJSON(&MetricsCurrent, serverToSend)
 			MetricsCurrent.muCounter.Lock()
 			MetricsCurrent.counterMetric = updateCounterMetrics("init", MetricsCurrent.counterMetric)
-			MetricsCurrent.muCounter.Unlock()git
+			MetricsCurrent.muCounter.Unlock()
 		}
 	}()
 	select {}
