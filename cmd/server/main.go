@@ -82,7 +82,7 @@ func listMetricJSON(w http.ResponseWriter, r *http.Request) {
 			valueRes := MetricsRun.gaugeMetric[metricReq.ID]
 			metricRes.Value = &valueRes
 		} else {
-			w.WriteHeader(http.StatusNotImplemented)
+			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 	} else if metricReq.MType == "counter" {
@@ -91,11 +91,11 @@ func listMetricJSON(w http.ResponseWriter, r *http.Request) {
 			valueRes := MetricsRun.counterMetric[metricReq.ID]
 			metricRes.Delta = &valueRes
 		} else {
-			w.WriteHeader(http.StatusNotImplemented)
+			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 	} else {
-		w.WriteHeader(http.StatusNotImplemented)
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	if resBody, err := json.Marshal(metricRes); err != nil {
