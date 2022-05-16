@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/spf13/viper"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -24,12 +25,21 @@ type Metrics struct {
 	counterMetric map[string]int64
 	timeMetric    time.Time
 }
-
 type MetricsJSON struct {
 	ID    string   `json:"id"`              // имя метрики
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
 	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+}
+type ServerConfig struct {
+	ADDRESS string `mapstructure:"ADDRESS"`
+}
+
+func loadConfig() (config ServerConfig, err error) {
+	viper.SetDefault("ADDRESS", "localhost:8080")
+	viper.AutomaticEnv()
+	err = viper.Unmarshal(&config)
+	return
 }
 
 var serverToGetAddress = "127.0.0.1:8080"
@@ -110,7 +120,7 @@ func listMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func updateMetrics(w http.ResponseWriter, r *http.Request) {
+func updateMetric(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metricType")
 	metricName := chi.URLParam(r, "metricName")
 	metricValue := chi.URLParam(r, "metricValue")
@@ -175,17 +185,18 @@ func main() {
 			handleSignal(sig)
 		}
 	}()
+	configRun, _ := loadConfig()
 	MetricsRun.gaugeMetric = make(map[string]float64)
 	MetricsRun.counterMetric = make(map[string]int64)
 	r := chi.NewRouter()
 	r.Get("/", listMetricsAll)
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/", updateMetricJSON)
-		r.Post("/{metricType}/{metricName}/{metricValue}", updateMetrics)
+		r.Post("/{metricType}/{metricName}/{metricValue}", updateMetric)
 	})
 	r.Route("/value", func(r chi.Router) {
 		r.Post("/", listMetricJSON)
 		r.Get("/{metricType}/{metricName}", listMetric)
 	})
-	log.Fatal(http.ListenAndServe(serverToGetAddress, r))
+	log.Fatal(http.ListenAndServe(configRun.ADDRESS, r))
 }
