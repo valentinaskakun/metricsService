@@ -99,6 +99,7 @@ func sendPOST(u url.URL, b []byte) {
 	client := &http.Client{}
 
 	req, err := http.NewRequest(method, "http://localhost:8080/update", bytes.NewBuffer(b))
+	req, err := http.NewRequest(method, "http://localhost:8080/update", bytes.NewBuffer(b))
 	req.Header.Add("Content-Type", "application/json")
 
 	if err != nil {
@@ -161,7 +162,7 @@ func main() {
 			fmt.Println("running metric.UpdateMetrics()")
 		}
 	}()
-	tickerPoll := time.NewTicker(time.Millisecond * 20000)
+	tickerPoll := time.NewTicker(time.Millisecond * 10000)
 
 	go func() {
 		for range tickerPoll.C {
