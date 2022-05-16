@@ -7,8 +7,11 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -166,8 +169,19 @@ func updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	//	w.Write(response)
 	//}
 }
-
+func handleSignal(signal os.Signal) {
+	fmt.Println("* Got:", signal)
+	os.Exit(-1)
+}
 func main() {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
+	go func() {
+		for {
+			sig := <-sigs
+			handleSignal(sig)
+		}
+	}()
 	MetricsRun.gaugeMetric = make(map[string]float64)
 	MetricsRun.counterMetric = make(map[string]int64)
 	r := chi.NewRouter()
