@@ -22,6 +22,14 @@ type CounterMemory struct {
 	metric map[string]int64
 	mutex  sync.Mutex
 }
+type MetricsGauge struct {
+	ID    string
+	Value float64
+}
+type MetricsCounter struct {
+	ID    string
+	Value int64
+}
 
 var (
 	GaugeMetric   GaugeMemory
@@ -62,20 +70,21 @@ func listMetricsAll(w http.ResponseWriter, r *http.Request) {
 func listMetric(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metricType")
 	metricName := chi.URLParam(r, "metricName")
-	if metricType == "gauge" {
-		if val, ok := GaugeMetric.metric[metricName]; ok {
-			fmt.Fprintln(w, val)
+	if metricType == "counter" {
+		if value, ok := CounterMetric.metric[metricName]; ok {
+			fmt.Fprintln(w, value)
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 		}
-	} else if metricType == "counter" {
-		if val, ok := CounterMetric.metric[metricName]; ok {
-			fmt.Fprintln(w, val)
+	} else if metricType == "gauge" {
+		if value, ok := GaugeMetric.metric[metricName]; ok {
+			fmt.Fprintln(w, value)
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 		}
 	} else {
-		w.WriteHeader(http.StatusNotImplemented)
+		w.WriteHeader(http.StatusNotFound)
+
 	}
 }
 
@@ -125,26 +134,36 @@ func updateMetrics(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metricType")
 	metricName := chi.URLParam(r, "metricName")
 	metricValue := chi.URLParam(r, "metricValue")
+
 	if metricType == "gauge" {
-		valParsed, err := strconv.ParseFloat(metricValue, 64)
+		var receivedMetric MetricsGauge
+		var err error
+		receivedMetric.ID = metricName
+		receivedMetric.Value, err = strconv.ParseFloat(metricValue, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-		} else {
-			MetricsRun.muGauge.Lock()
-			GaugeMetric.metric[metricName] = valParsed
-			MetricsRun.muGauge.Unlock()
+			return
 		}
+		GaugeMetric.mutex.Lock()
+		GaugeMetric.metric[receivedMetric.ID] = receivedMetric.Value
+		GaugeMetric.mutex.Unlock()
+
 	} else if metricType == "counter" {
-		valParsed, err := strconv.ParseInt(metricValue, 10, 64)
+		var receivedMetric MetricsCounter
+		receivedMetric.ID = metricName
+		var err error
+		receivedMetric.Value, err = strconv.ParseInt(metricValue, 0, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-		} else {
-			MetricsRun.muCounter.Lock()
-			CounterMetric.metric[metricName] += valParsed
-			MetricsRun.muCounter.Unlock()
+			return
 		}
+		previousValue := CounterMetric.metric[receivedMetric.ID]
+		CounterMetric.mutex.Lock()
+		CounterMetric.metric[receivedMetric.ID] = receivedMetric.Value + previousValue
+		CounterMetric.mutex.Unlock()
+
 	} else {
-		w.WriteHeader(http.StatusNotImplemented)
+		w.WriteHeader(501)
 	}
 }
 
