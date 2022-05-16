@@ -196,10 +196,6 @@ func main() {
 	r.Use(middleware.Compress(5))
 	r.Route("/", func(r chi.Router) {
 		r.Get("/", listMetricsAll)
-		r.Post("/update/{metricType}/*", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(404)
-
-		})
 		r.Post("/update", updateMetricJSON)
 		r.Post("/value", listMetricJSON)
 		r.Post("/update/{metricType}/{metricName}/{metricValue}", updateMetrics)
