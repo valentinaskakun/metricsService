@@ -8,8 +8,11 @@ import (
 	"github.com/go-chi/render"
 	"github.com/spf13/viper"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"syscall"
 )
 
 type GaugeMemory struct {
@@ -209,8 +212,19 @@ func LoadConfig() (config Config, err error) {
 	err = viper.Unmarshal(&config)
 	return
 }
-
+func handleSignal(signal os.Signal) {
+	fmt.Println("* Got:", signal)
+	os.Exit(-1)
+}
 func main() {
+	sigs := make(chan os.Signal, 4)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
+	go func() {
+		for {
+			sig := <-sigs
+			handleSignal(sig)
+		}
+	}()
 	config, _ := LoadConfig()
 
 	GaugeMetric.metric = make(map[string]float64)
