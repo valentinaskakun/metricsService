@@ -161,6 +161,7 @@ func main() {
 	//todo добавить WG
 	go func() {
 		for range tickerPoll.C {
+			//todo проверить локи, они рааботают вообще норм или нет
 			MetricsCurrent.muGauge.Lock()
 			MetricsCurrent.gaugeMetric = updateGaugeMetrics()
 			MetricsCurrent.muGauge.Unlock()

@@ -147,13 +147,13 @@ func updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 	if metricReq.MType == "gauge" {
-		//MetricsRun.muGauge.Lock()
+		MetricsRun.muGauge.Lock()
 		MetricsRun.gaugeMetric[metricReq.ID] = *metricReq.Value
-		//MetricsRun.muGauge.Unlock()
+		MetricsRun.muGauge.Unlock()
 	} else if metricReq.MType == "counter" {
-		//MetricsRun.muCounter.Lock()
+		MetricsRun.muCounter.Lock()
 		MetricsRun.counterMetric[metricReq.ID] += *metricReq.Delta
-		//MetricsRun.muCounter.Unlock()
+		MetricsRun.muCounter.Unlock()
 	} else {
 		w.WriteHeader(http.StatusNotImplemented)
 	}
@@ -161,13 +161,6 @@ func updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	resBody, _ := json.Marshal("{}")
 	w.Write(resBody)
 
-	//if response, err := json.Marshal(); err != nil {
-	//	http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-	//	return
-	//} else {
-	//	w.WriteHeader(http.StatusOK)
-	//	w.Write(response)
-	//}
 }
 func handleSignal(signal os.Signal) {
 	fmt.Println("* Got:", signal)
