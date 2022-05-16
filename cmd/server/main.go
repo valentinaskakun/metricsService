@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -92,13 +91,12 @@ func listMetricJSON(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusNotImplemented)
 	}
-	if _, err := json.Marshal(metricRes); err != nil {
+	if resBody, err := json.Marshal(metricRes); err != nil {
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	} else {
 		w.WriteHeader(http.StatusOK)
-		//w.Write(resBody)
-		render.JSON(w, r, metricRes)
+		w.Write(resBody)
 	}
 }
 
@@ -163,19 +161,22 @@ func main() {
 	MetricsRun.gaugeMetric = make(map[string]float64)
 	MetricsRun.counterMetric = make(map[string]int64)
 	r := chi.NewRouter()
-	r.Use(render.SetContentType(render.ContentTypeJSON))
 	r.Get("/", listMetricsAll)
 	r.Route("/update", func(r chi.Router) {
 		r.Route("/{metricType}", func(r chi.Router) {
 			r.Post("/{metricName}/{metricValue}", updateMetrics)
 		})
-		r.Post("/", updateMetricJSON)
+		r.Route("/", func(r chi.Router) {
+			r.Post("/", updateMetricJSON)
+		})
 	})
 	r.Route("/value", func(r chi.Router) {
 		r.Route("/{metricType}", func(r chi.Router) {
 			r.Get("/{metricName}", listMetric)
 		})
-		r.Post("/", listMetricJSON)
+		r.Route("/", func(r chi.Router) {
+			r.Post("/", listMetricJSON)
+		})
 	})
 	log.Fatal(http.ListenAndServe(serverToGetAddress, r))
 }
