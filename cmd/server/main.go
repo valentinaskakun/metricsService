@@ -13,6 +13,20 @@ import (
 )
 
 //todo: вынести структуру в модуль + реализовать интерфейс хранения
+type GaugeMemory struct {
+	metric map[string]float64
+	mutex  sync.Mutex
+}
+
+type CounterMemory struct {
+	metric map[string]int64
+	mutex  sync.Mutex
+}
+
+var (
+	GaugeMetric   GaugeMemory
+	CounterMetric CounterMemory
+)
 
 type Metrics struct {
 	muGauge       sync.RWMutex
@@ -37,11 +51,11 @@ var MetricsRun Metrics
 func listMetricsAll(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "METRICS GAUGE:")
 	//todo: нужно ли добавлять RLock
-	for key, value := range MetricsRun.gaugeMetric {
+	for key, value := range GaugeMetric.metric {
 		fmt.Fprintln(w, key, value)
 	}
 	fmt.Fprintln(w, "METRICS COUNTER:")
-	for key, value := range MetricsRun.counterMetric {
+	for key, value := range CounterMetric.metric {
 		fmt.Fprintln(w, key, value)
 	}
 }
@@ -49,13 +63,13 @@ func listMetric(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metricType")
 	metricName := chi.URLParam(r, "metricName")
 	if metricType == "gauge" {
-		if val, ok := MetricsRun.gaugeMetric[metricName]; ok {
+		if val, ok := GaugeMetric.metric[metricName]; ok {
 			fmt.Fprintln(w, val)
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 		}
 	} else if metricType == "counter" {
-		if val, ok := MetricsRun.counterMetric[metricName]; ok {
+		if val, ok := CounterMetric.metric[metricName]; ok {
 			fmt.Fprintln(w, val)
 		} else {
 			w.WriteHeader(http.StatusNotFound)
@@ -77,18 +91,18 @@ func listMetricJSON(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 	if metricReq.MType == "gauge" {
-		if _, ok := MetricsRun.gaugeMetric[metricReq.ID]; ok {
+		if _, ok := GaugeMetric.metric[metricReq.ID]; ok {
 			metricRes.ID, metricRes.MType, metricRes.Delta = metricReq.ID, metricReq.MType, metricReq.Delta
-			valueRes := MetricsRun.gaugeMetric[metricReq.ID]
+			valueRes := GaugeMetric.metric[metricReq.ID]
 			metricRes.Value = &valueRes
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 	} else if metricReq.MType == "counter" {
-		if _, ok := MetricsRun.counterMetric[metricReq.ID]; ok {
+		if _, ok := CounterMetric.metric[metricReq.ID]; ok {
 			metricRes.ID, metricRes.MType, metricRes.Value = metricReq.ID, metricReq.MType, metricReq.Value
-			valueRes := MetricsRun.counterMetric[metricReq.ID]
+			valueRes := CounterMetric.metric[metricReq.ID]
 			metricRes.Delta = &valueRes
 		} else {
 			w.WriteHeader(http.StatusNotFound)
@@ -117,7 +131,7 @@ func updateMetrics(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		} else {
 			MetricsRun.muGauge.Lock()
-			MetricsRun.gaugeMetric[metricName] = valParsed
+			GaugeMetric.metric[metricName] = valParsed
 			MetricsRun.muGauge.Unlock()
 		}
 	} else if metricType == "counter" {
@@ -126,7 +140,7 @@ func updateMetrics(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		} else {
 			MetricsRun.muCounter.Lock()
-			MetricsRun.counterMetric[metricName] += valParsed
+			CounterMetric.metric[metricName] += valParsed
 			MetricsRun.muCounter.Unlock()
 		}
 	} else {
@@ -145,11 +159,11 @@ func updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 	if metricReq.MType == "gauge" {
 		//MetricsRun.muGauge.Lock()
-		MetricsRun.gaugeMetric[metricReq.ID] = *metricReq.Value
+		GaugeMetric.metric[metricReq.ID] = *metricReq.Value
 		//MetricsRun.muGauge.Unlock()
 	} else if metricReq.MType == "counter" {
 		//MetricsRun.muCounter.Lock()
-		MetricsRun.counterMetric[metricReq.ID] += *metricReq.Delta
+		CounterMetric.metric[metricReq.ID] += *metricReq.Delta
 		//MetricsRun.muCounter.Unlock()
 	} else {
 		w.WriteHeader(http.StatusNotImplemented)
@@ -167,8 +181,8 @@ func updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	//}
 }
 func main() {
-	MetricsRun.gaugeMetric = make(map[string]float64)
-	MetricsRun.counterMetric = make(map[string]int64)
+	GaugeMetric.metric = make(map[string]float64)
+	CounterMetric.metric = make(map[string]int64)
 	r := chi.NewRouter()
 	r.Get("/", listMetricsAll)
 	r.Route("/update", func(r chi.Router) {
