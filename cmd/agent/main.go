@@ -33,14 +33,14 @@ type MetricsJSON struct {
 
 const (
 	pollIntervalConst   = 2000
-	reportIntervalConst = 10000
+	reportIntervalConst = 4000
 )
 
 var pollInterval time.Duration = pollIntervalConst     //Milliseconds
 var reportInterval time.Duration = reportIntervalConst //Milliseconds
 var serverToSendProto = "http://"
 var serverToSend = serverToSendProto + "127.0.0.1:8080"
-var metricsListConfig = map[string]bool{"Alloc": true, "BuckHashSys": true, "Frees": true, "GCCPUFraction": true, "GCSys": true, "HeapAlloc": true, "HeapIdle": true, "HeapInuse": true, "HeapObjects": true, "HeapReleased": true, "HeapSys": true, "LastGC": true, "Lookups": true, "MCacheInuse": true, "MCacheSys": true, "MSpanInuse": true, "MSpanSys": true, "Mallocs": true, "NextGC": true, "NumForcedGC": true, "NumGC": true, "OtherSys": true, "PauseTotalNs": true, "StackInuse": true, "StackSys": true, "Sys": true, "TotalAlloc": true, "pollCount": true}
+var metricsListConfig = map[string]bool{"Alloc": true, "BuckHashSys": true, "Frees": true, "GCCPUFraction": true, "GCSys": true, "HeapAlloc": true, "HeapIdle": true, "HeapInuse": true, "HeapObjects": true, "HeapReleased": true, "HeapSys": true, "LastGC": true, "Lookups": true, "MCacheInuse": true, "MCacheSys": true, "MSpanInuse": true, "MSpanSys": true, "Mallocs": true, "NextGC": true, "NumForcedGC": true, "NumGC": true, "OtherSys": true, "PauseTotalNs": true, "StackInuse": true, "StackSys": true, "Sys": true, "TotalAlloc": true, "PollCount": true}
 var MetricsCurrent Metrics
 
 //todo: добавить обработку ошибок
@@ -52,14 +52,14 @@ func updateGaugeMetrics() (metricsGaugeUpdated map[string]float64) {
 			metricsGaugeUpdated[key] = value
 		}
 	}
-	metricsGaugeUpdated["randomValue"] = rand.Float64()
+	metricsGaugeUpdated["RandomValue"] = rand.Float64()
 	return metricsGaugeUpdated
 }
 func updateCounterMetrics(action string, metricsCounterToUpdate map[string]int64) (metricsCounterUpdated map[string]int64) {
 	metricsCounterUpdated = make(map[string]int64)
-	if _, ok := metricsCounterToUpdate["pollCount"]; !ok {
+	if _, ok := metricsCounterToUpdate["PollCount"]; !ok {
 		metricsCounterToUpdate = make(map[string]int64)
-		metricsCounterToUpdate["pollCount"] = 0
+		metricsCounterToUpdate["PollCount"] = 0
 	}
 	switch {
 	case action == "add":
@@ -79,7 +79,7 @@ func updateCounterMetrics(action string, metricsCounterToUpdate map[string]int64
 }
 
 func sendMetrics(metricsToSend *Metrics, serverToSendLink string) {
-	if metricsToSend.counterMetric["pollCount"] != 0 {
+	if metricsToSend.counterMetric["PollCount"] != 0 {
 		for key, value := range metricsToSend.gaugeMetric {
 			urlStr, err := url.Parse(serverToSendLink)
 			if err != nil {
@@ -113,7 +113,7 @@ func sendPOST(urlString string) {
 
 //todo: переделать использование url server path
 func sendMetricJSON(metricsToSend *Metrics, serverToSendLink string) {
-	if metricsToSend.counterMetric["pollCount"] != 0 {
+	if metricsToSend.counterMetric["PollCount"] != 0 {
 		urlStr, _ := url.Parse(serverToSendLink)
 		urlStr.Path = path.Join(urlStr.Path, "update")
 		client := resty.New()
@@ -140,7 +140,7 @@ func sendMetricJSON(metricsToSend *Metrics, serverToSendLink string) {
 				Post(urlStr.String())
 		}
 	} else {
-		fmt.Println("ERROR: " + "pollCounter is 0")
+		fmt.Println("ERROR: PollCount is 0")
 	}
 }
 func handleSignal(signal os.Signal) {
@@ -161,21 +161,20 @@ func main() {
 	//todo добавить WG
 	go func() {
 		for range tickerPoll.C {
-			MetricsCurrent.muGauge.Lock()
+			//MetricsCurrent.muGauge.Lock()
 			MetricsCurrent.gaugeMetric = updateGaugeMetrics()
-			MetricsCurrent.muGauge.Unlock()
-			MetricsCurrent.muCounter.Lock()
+			//MetricsCurrent.muGauge.Unlock()
+			//MetricsCurrent.muCounter.Lock()
 			MetricsCurrent.counterMetric = updateCounterMetrics("add", MetricsCurrent.counterMetric)
-			MetricsCurrent.muCounter.Unlock()
+			//MetricsCurrent.muCounter.Unlock()
 		}
-
 	}()
 	go func() {
 		for range tickerReport.C {
 			sendMetricJSON(&MetricsCurrent, serverToSend)
-			MetricsCurrent.muCounter.Lock()
+			//MetricsCurrent.muCounter.Lock()
 			MetricsCurrent.counterMetric = updateCounterMetrics("init", MetricsCurrent.counterMetric)
-			MetricsCurrent.muCounter.Unlock()
+			//MetricsCurrent.muCounter.Unlock()
 		}
 	}()
 	select {}

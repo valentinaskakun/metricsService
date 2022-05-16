@@ -147,13 +147,13 @@ func updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 	if metricReq.MType == "gauge" {
-		MetricsRun.muGauge.Lock()
+		//MetricsRun.muGauge.Lock()
 		MetricsRun.gaugeMetric[metricReq.ID] = *metricReq.Value
-		MetricsRun.muGauge.Unlock()
+		//MetricsRun.muGauge.Unlock()
 	} else if metricReq.MType == "counter" {
-		MetricsRun.muCounter.Lock()
+		//MetricsRun.muCounter.Lock()
 		MetricsRun.counterMetric[metricReq.ID] += *metricReq.Delta
-		MetricsRun.muCounter.Unlock()
+		//MetricsRun.muCounter.Unlock()
 	} else {
 		w.WriteHeader(http.StatusNotImplemented)
 	}
