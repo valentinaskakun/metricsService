@@ -1,180 +1,173 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/go-resty/resty/v2"
-	"github.com/valentinaskakun/metricsService/internal/metricsruntime"
+	"github.com/spf13/viper"
 	"math/rand"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
 	"path"
-	"strconv"
-	"sync"
+	"runtime"
 	"syscall"
 	"time"
 )
 
-type Metrics struct {
-	muGauge       sync.RWMutex
-	gaugeMetric   map[string]float64
-	muCounter     sync.RWMutex
-	counterMetric map[string]int64
-	timeMetric    time.Time
+var listGauges = []string{"Alloc", "BuckHashSys", "Frees", "GCCPUFraction", "GCSys", "HeapAlloc", "HeapIdle", "HeapInuse", "HeapObjects", "HeapReleased", "HeapSys", "LastGC", "Lookups", "MCacheInuse", "MCacheSys", "MSpanInuse", "MSpanSys", "Mallocs", "NextGC", "NumForcedGC", "NumGC", "OtherSys", "PauseTotalNs", "StackInuse", "StackSys", "Sys", "TotalAlloc", "RandomValue"}
+var listCounters = []string{"PollCount"}
+
+var serverToSendAddress string = "127.0.0.1:8080"
+
+var u = &url.URL{
+	Scheme: "http",
+	Host:   "localhost:8080",
 }
 
-type MetricsJSON struct {
+type MetricCounter struct {
+	PollCount uint64
+}
+
+type MetricGauge struct {
+	runtime.MemStats
+	RandomValue float64
+}
+
+func (m *MetricGauge) UpdateMetrics() {
+	runtime.ReadMemStats(&m.MemStats)
+	m.RandomValue = rand.Float64()
+}
+
+type Metrics struct {
 	ID    string   `json:"id"`              // имя метрики
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
 	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
-const (
-	pollIntervalConst   = 2000
-	reportIntervalConst = 4000
-)
+func (m *MetricGauge) SendMetrics() {
+	x := make(map[string]float64)
+	j, _ := json.Marshal(m)
 
-var pollInterval time.Duration = pollIntervalConst     //Milliseconds
-var reportInterval time.Duration = reportIntervalConst //Milliseconds
-var serverToSendProto = "http://"
-var serverToSend = serverToSendProto + "127.0.0.1:8080"
-var metricsListConfig = map[string]bool{"Alloc": true, "BuckHashSys": true, "Frees": true, "GCCPUFraction": true, "GCSys": true, "HeapAlloc": true, "HeapIdle": true, "HeapInuse": true, "HeapObjects": true, "HeapReleased": true, "HeapSys": true, "LastGC": true, "Lookups": true, "MCacheInuse": true, "MCacheSys": true, "MSpanInuse": true, "MSpanSys": true, "Mallocs": true, "NextGC": true, "NumForcedGC": true, "NumGC": true, "OtherSys": true, "PauseTotalNs": true, "StackInuse": true, "StackSys": true, "Sys": true, "TotalAlloc": true, "PollCount": true}
-var MetricsCurrent Metrics
+	json.Unmarshal(j, &x)
 
-//todo: добавить обработку ошибок
-func updateGaugeMetrics() (metricsGaugeUpdated map[string]float64) {
-	metricsGaugeUpdated = make(map[string]float64)
-	tempCurrentMemStatsMetrics := metricsruntime.GetCurrentValuesRuntimeGauge()
-	for key, value := range tempCurrentMemStatsMetrics {
-		if _, ok := metricsListConfig[key]; ok {
-			metricsGaugeUpdated[key] = value
-		}
+	for _, v := range listGauges {
+		value := x[v]
+		var m Metrics
+		m.ID = v
+		m.MType = "gauge"
+		m.Value = &value
+		body, _ := json.Marshal(m)
+		//u.Path = path.Join("update", "gauge", v, fmt.Sprintf("%f", value))
+		u.Path = path.Join("update")
+
+		sendPOST(*u, body)
+
 	}
-	metricsGaugeUpdated["RandomValue"] = rand.Float64()
-	return metricsGaugeUpdated
-}
-func updateCounterMetrics(action string, metricsCounterToUpdate map[string]int64) (metricsCounterUpdated map[string]int64) {
-	metricsCounterUpdated = make(map[string]int64)
-	if _, ok := metricsCounterToUpdate["PollCount"]; !ok {
-		metricsCounterToUpdate = make(map[string]int64)
-		metricsCounterToUpdate["PollCount"] = 0
-	}
-	switch {
-	case action == "add":
-		for key, value := range metricsCounterToUpdate {
-			if _, ok := metricsListConfig[key]; ok {
-				metricsCounterUpdated[key] = value + 1
-			}
-		}
-	case action == "init":
-		for key := range metricsCounterToUpdate {
-			if _, ok := metricsListConfig[key]; ok {
-				metricsCounterUpdated[key] = 0
-			}
-		}
-	}
-	return metricsCounterUpdated
+
 }
 
-func sendMetrics(metricsToSend *Metrics, serverToSendLink string) {
-	if metricsToSend.counterMetric["PollCount"] != 0 {
-		for key, value := range metricsToSend.gaugeMetric {
-			urlStr, err := url.Parse(serverToSendLink)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			urlStr.Path = path.Join(urlStr.Path, "update", "gauge", key, fmt.Sprintf("%f", value))
-			sendPOST(urlStr.String())
-		}
-		for key, value := range metricsToSend.counterMetric {
-			urlStr, err := url.Parse(serverToSendLink)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			urlStr.Path = path.Join(urlStr.Path, "update", "counter", key, strconv.FormatInt(value, 10))
-			sendPOST(urlStr.String())
-		}
-	}
+func (m *MetricCounter) UpdateMetrics() {
+	m.PollCount++
 }
-func sendPOST(urlString string) {
-	client := resty.New()
-	_, err := client.R().
-		SetHeader("Content-Type", "Content-Type: text/plain").
-		Post(urlString)
+
+func (m *MetricCounter) SendMetrics() {
+	xc := make(map[string]int64)
+	j, _ := json.Marshal(m)
+	json.Unmarshal(j, &xc)
+
+	for _, v := range listCounters {
+		delta := xc[v]
+		var m Metrics
+		m.ID = v
+		m.MType = "counter"
+		m.Delta = &delta
+		body, _ := json.Marshal(m)
+		//u.Path = path.Join("update", "counter", v, strconv.FormatInt(value, 10))
+		u.Path = path.Join("update")
+		fmt.Println("SEND metrics func-------------------------------")
+		fmt.Println(time.Now(), m.MType, m.Delta, body)
+		sendPOST(*u, body)
+	}
+
+}
+
+func sendPOST(u url.URL, b []byte) {
+	method := "POST"
+	client := &http.Client{}
+
+	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(b))
+	req.Header.Add("Content-Type", "application/json")
+
 	if err != nil {
-		fmt.Println("ERROR POST " + urlString)
+		fmt.Println(err)
+		fmt.Println(err)
 		return
 	}
+	res, err := client.Do(req)
+	fmt.Println(req, res)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("SEND POST func-------------------------------")
+	fmt.Println(time.Now(), bytes.NewBuffer(b))
+	defer res.Body.Close()
+
 }
 
-//todo: переделать использование url server path
-func sendMetricJSON(metricsToSend *Metrics, serverToSendLink string) {
-	if metricsToSend.counterMetric["PollCount"] != 0 {
-		urlStr, _ := url.Parse(serverToSendLink)
-		urlStr.Path = path.Join(urlStr.Path, "update")
-		client := resty.New()
-		client.R().
-			SetHeader("Content-Type", "Content-Type: application/json")
-		for key, value := range metricsToSend.gaugeMetric {
-			metricToSend, err := json.Marshal(MetricsJSON{ID: key, MType: "gauge", Value: &value})
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			client.R().
-				SetBody(metricToSend).
-				Post(urlStr.String())
-		}
-		for key, value := range metricsToSend.counterMetric {
-			metricToSend, err := json.Marshal(MetricsJSON{ID: key, MType: "counter", Delta: &value})
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			client.R().
-				SetBody(metricToSend).
-				Post(urlStr.String())
-		}
-	} else {
-		fmt.Println("ERROR: PollCount is 0")
-	}
+type Config struct {
+	ADDRESS        string `mapstructure:"ADDRESS"`
+	ReportInterval string `mapstructure:"REPORT_INTERVAL"`
+	PollInterval   string `mapstructure:"POLL_INTERVAL"`
+}
+
+func LoadConfig() (config Config, err error) {
+	viper.SetDefault("REPORT_INTERVAL", "3s")
+	viper.SetDefault("ADDRESS", ":8080")
+	viper.SetDefault("POLL_INTERVAL", "2s")
+	viper.AutomaticEnv()
+	err = viper.Unmarshal(&config)
+	return
 }
 func handleSignal(signal os.Signal) {
 	fmt.Println("* Got:", signal)
 	os.Exit(-1)
 }
 func main() {
-	tickerPoll := time.NewTicker(time.Millisecond * pollInterval)
-	tickerReport := time.NewTicker(time.Millisecond * reportInterval)
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
+
+	var metricG MetricGauge
+	var metricC MetricCounter
+	config, _ := LoadConfig()
+	//
+	pullDuration, _ := time.ParseDuration(config.PollInterval)
+	//reportDuration, _ := time.ParseDuration(config.ReportInterval)
+	pullTicker := time.NewTicker(pullDuration)
+	//pushTicker := time.NewTicker(reportDuration)
+	sigs := make(chan os.Signal, 4)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
 	go func() {
 		for {
 			sig := <-sigs
 			handleSignal(sig)
 		}
 	}()
-	//todo добавить WG
 	go func() {
-		for range tickerPoll.C {
-			MetricsCurrent.muGauge.Lock()
-			MetricsCurrent.gaugeMetric = updateGaugeMetrics()
-			MetricsCurrent.muGauge.Unlock()
-			MetricsCurrent.muCounter.Lock()
-			MetricsCurrent.counterMetric = updateCounterMetrics("add", MetricsCurrent.counterMetric)
-			MetricsCurrent.muCounter.Unlock()
+		for range pullTicker.C {
+			metricG.UpdateMetrics()
+			metricC.UpdateMetrics()
+			fmt.Println("running metric.UpdateMetrics()")
 		}
 	}()
+	tickerPoll := time.NewTicker(time.Millisecond * 20000)
+
 	go func() {
-		for range tickerReport.C {
-			sendMetricJSON(&MetricsCurrent, serverToSend)
-			MetricsCurrent.muCounter.Lock()
-			MetricsCurrent.counterMetric = updateCounterMetrics("init", MetricsCurrent.counterMetric)
-			MetricsCurrent.muCounter.Unlock()
+		for range tickerPoll.C {
+			metricG.SendMetrics()
+			metricC.SendMetrics()
+
 		}
 	}()
 	select {}
