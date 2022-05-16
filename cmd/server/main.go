@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -156,36 +155,38 @@ func updateMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateMetricJSON(w http.ResponseWriter, r *http.Request) {
-	metricReq := Metrics{}
-	body, err := ioutil.ReadAll(r.Body)
+	var m Metrics
+	err := json.NewDecoder(r.Body).Decode(&m)
 	if err != nil {
+		//http.Error(w, err.Error(), http.StatusBadRequest)
 		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, m)
+		return
 	}
-	if err := json.Unmarshal(body, &metricReq); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-	}
-	if metricReq.MType == "gauge" {
-		//MetricsRun.muGauge.Lock()
-		GaugeMetric.metric[metricReq.ID] = *metricReq.Value
-		//MetricsRun.muGauge.Unlock()
-	} else if metricReq.MType == "counter" {
-		//MetricsRun.muCounter.Lock()
-		CounterMetric.metric[metricReq.ID] += *metricReq.Delta
-		//MetricsRun.muCounter.Unlock()
+	if m.MType == "gauge" {
+		if m.Value == nil {
+			w.WriteHeader(http.StatusBadRequest)
+		} else {
+			GaugeMetric.mutex.Lock()
+			GaugeMetric.metric[m.ID] = *m.Value
+			GaugeMetric.mutex.Unlock()
+			render.JSON(w, r, m)
+		}
+	} else if m.MType == "counter" {
+		if m.Delta == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			CounterMetric.mutex.Unlock()
+			render.JSON(w, r, m)
+		} else {
+			previousValue := CounterMetric.metric[m.ID]
+			CounterMetric.mutex.Lock()
+			CounterMetric.metric[m.ID] = *m.Delta + previousValue
+			CounterMetric.mutex.Unlock()
+			render.JSON(w, r, m)
+		}
 	} else {
-		w.WriteHeader(http.StatusNotImplemented)
+		w.WriteHeader(http.StatusBadRequest)
 	}
-	w.WriteHeader(http.StatusOK)
-	resBody, _ := json.Marshal("{}")
-	w.Write(resBody)
-
-	//if response, err := json.Marshal(); err != nil {
-	//	http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-	//	return
-	//} else {
-	//	w.WriteHeader(http.StatusOK)
-	//	w.Write(response)
-	//}
 }
 func main() {
 	GaugeMetric.metric = make(map[string]float64)
