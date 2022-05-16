@@ -64,7 +64,6 @@ func (m *MetricGauge) SendMetrics() {
 		u.Path = path.Join("update")
 
 		sendPOST(*u, body)
-
 	}
 
 }
@@ -87,8 +86,7 @@ func (m *MetricCounter) SendMetrics() {
 		body, _ := json.Marshal(m)
 		//u.Path = path.Join("update", "counter", v, strconv.FormatInt(value, 10))
 		u.Path = path.Join("update")
-		fmt.Println("SEND metrics func-------------------------------")
-		fmt.Println(time.Now(), m.MType, m.Delta, body)
+
 		sendPOST(*u, body)
 	}
 
@@ -98,23 +96,21 @@ func sendPOST(u url.URL, b []byte) {
 	method := "POST"
 	client := &http.Client{}
 
+	//req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(b))
 	req, err := http.NewRequest(method, "http://localhost:8080/update", bytes.NewBuffer(b))
-	//req, err := http.NewRequest(method, "http://localhost:8080/update", bytes.NewBuffer(b))
 	req.Header.Add("Content-Type", "application/json")
 
 	if err != nil {
 		fmt.Println(err)
-		fmt.Println(err)
 		return
 	}
+
 	res, err := client.Do(req)
 	fmt.Println(req, res)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println("SEND POST func-------------------------------")
-	fmt.Println(time.Now(), bytes.NewBuffer(b))
 	defer res.Body.Close()
 
 }
@@ -126,13 +122,14 @@ type Config struct {
 }
 
 func LoadConfig() (config Config, err error) {
-	viper.SetDefault("REPORT_INTERVAL", "3s")
+	viper.SetDefault("REPORT_INTERVAL", "10s")
 	viper.SetDefault("ADDRESS", ":8080")
 	viper.SetDefault("POLL_INTERVAL", "2s")
 	viper.AutomaticEnv()
 	err = viper.Unmarshal(&config)
 	return
 }
+
 func handleSignal(signal os.Signal) {
 	fmt.Println("* Got:", signal)
 	os.Exit(-1)
@@ -172,4 +169,5 @@ func main() {
 		}
 	}()
 	select {}
+
 }
