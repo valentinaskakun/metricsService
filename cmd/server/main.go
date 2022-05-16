@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"github.com/spf13/viper"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -153,45 +154,45 @@ func receiveMetricJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func valueOfMetricJSON(w http.ResponseWriter, r *http.Request) {
-	var m Metrics
-	err := json.NewDecoder(r.Body).Decode(&m)
+	w.Header().Set("Content-Type", "application/json")
+	metricReq := Metrics{}
+	metricRes := Metrics{}
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		w.WriteHeader(http.StatusBadRequest)
 	}
-
-	if m.MType == "counter" {
-		if value, ok := CounterMetric.metric[m.ID]; ok {
-			m.Delta = &value
-			if resBody, err := json.Marshal(m); err != nil {
-				http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-				return
-			} else {
-				w.WriteHeader(http.StatusOK)
-				w.Write(resBody)
-			}
+	if err := json.Unmarshal(body, &metricReq); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+	if metricReq.MType == "gauge" {
+		if _, ok := GaugeMetric.metric[metricReq.ID]; ok {
+			metricRes.ID, metricRes.MType, metricRes.Delta = metricReq.ID, metricReq.MType, metricReq.Delta
+			valueRes := GaugeMetric.metric[metricReq.ID]
+			metricRes.Value = &valueRes
 		} else {
 			w.WriteHeader(http.StatusNotFound)
-
+			return
 		}
-	} else if m.MType == "gauge" {
-		if value, ok := GaugeMetric.metric[m.ID]; ok {
-			m.Value = &value
-			if resBody, err := json.Marshal(m); err != nil {
-				http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-				return
-			} else {
-				w.WriteHeader(http.StatusOK)
-				w.Write(resBody)
-			}
+	} else if metricReq.MType == "counter" {
+		if _, ok := CounterMetric.metric[metricReq.ID]; ok {
+			metricRes.ID, metricRes.MType, metricRes.Value = metricReq.ID, metricReq.MType, metricReq.Value
+			valueRes := CounterMetric.metric[metricReq.ID]
+			metricRes.Delta = &valueRes
 		} else {
 			w.WriteHeader(http.StatusNotFound)
+			return
 		}
 	} else {
 		w.WriteHeader(http.StatusNotFound)
-
+		return
 	}
-
+	if resBody, err := json.Marshal(metricRes); err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Write(resBody)
+	}
 }
 
 type MetricsGauge struct {
