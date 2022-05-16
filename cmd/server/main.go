@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -36,7 +37,7 @@ var (
 	CounterMetric CounterMemory
 )
 
-type Metrics struct {
+type Metrics1 struct {
 	muGauge       sync.RWMutex
 	gaugeMetric   map[string]float64
 	muCounter     sync.RWMutex
@@ -44,7 +45,7 @@ type Metrics struct {
 	timeMetric    time.Time
 }
 
-type MetricsJSON struct {
+type Metrics struct {
 	ID    string   `json:"id"`              // имя метрики
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
 	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
@@ -53,7 +54,7 @@ type MetricsJSON struct {
 
 var serverToGetAddress = "127.0.0.1:8080"
 
-var MetricsRun Metrics
+//var MetricsRun Metrics
 
 //todo: вынести хэндлеры в интернал
 func listMetricsAll(w http.ResponseWriter, r *http.Request) {
@@ -89,44 +90,31 @@ func listMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func listMetricJSON(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	metricReq := MetricsJSON{}
-	metricRes := MetricsJSON{}
-	body, err := ioutil.ReadAll(r.Body)
+	var m Metrics
+	err := json.NewDecoder(r.Body).Decode(&m)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
-	if err := json.Unmarshal(body, &metricReq); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-	}
-	if metricReq.MType == "gauge" {
-		if _, ok := GaugeMetric.metric[metricReq.ID]; ok {
-			metricRes.ID, metricRes.MType, metricRes.Delta = metricReq.ID, metricReq.MType, metricReq.Delta
-			valueRes := GaugeMetric.metric[metricReq.ID]
-			metricRes.Value = &valueRes
+
+	if m.MType == "counter" {
+		if value, ok := CounterMetric.metric[m.ID]; ok {
+			m.Delta = &value
+			render.JSON(w, r, m)
 		} else {
 			w.WriteHeader(http.StatusNotFound)
-			return
+
 		}
-	} else if metricReq.MType == "counter" {
-		if _, ok := CounterMetric.metric[metricReq.ID]; ok {
-			metricRes.ID, metricRes.MType, metricRes.Value = metricReq.ID, metricReq.MType, metricReq.Value
-			valueRes := CounterMetric.metric[metricReq.ID]
-			metricRes.Delta = &valueRes
+	} else if m.MType == "gauge" {
+		if value, ok := GaugeMetric.metric[m.ID]; ok {
+			m.Value = &value
+			render.JSON(w, r, m)
 		} else {
 			w.WriteHeader(http.StatusNotFound)
-			return
 		}
 	} else {
 		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if resBody, err := json.Marshal(metricRes); err != nil {
-		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-		return
-	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write(resBody)
+
 	}
 }
 
@@ -168,7 +156,7 @@ func updateMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateMetricJSON(w http.ResponseWriter, r *http.Request) {
-	metricReq := MetricsJSON{}
+	metricReq := Metrics{}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
