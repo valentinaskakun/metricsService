@@ -163,20 +163,12 @@ func main() {
 	r := chi.NewRouter()
 	r.Get("/", listMetricsAll)
 	r.Route("/update", func(r chi.Router) {
-		r.Route("/{metricType}", func(r chi.Router) {
-			r.Post("/{metricName}/{metricValue}", updateMetrics)
-		})
-		r.Route("/", func(r chi.Router) {
-			r.Post("/", updateMetricJSON)
-		})
+		r.Post("/", updateMetricJSON)
+		r.Post("/{metricType}/{metricName}/{metricValue}", updateMetrics)
 	})
 	r.Route("/value", func(r chi.Router) {
-		r.Route("/{metricType}", func(r chi.Router) {
-			r.Get("/{metricName}", listMetric)
-		})
-		r.Route("/", func(r chi.Router) {
-			r.Post("/", listMetricJSON)
-		})
+		r.Post("/", listMetricJSON)
+		r.Get("/{metricType}/{metricName}", listMetric)
 	})
 	log.Fatal(http.ListenAndServe(serverToGetAddress, r))
 }

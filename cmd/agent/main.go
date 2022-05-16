@@ -33,7 +33,7 @@ type MetricsJSON struct {
 
 const (
 	pollIntervalConst   = 2000
-	reportIntervalConst = 4000
+	reportIntervalConst = 10000
 )
 
 var pollInterval time.Duration = pollIntervalConst     //Milliseconds
