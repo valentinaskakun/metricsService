@@ -78,18 +78,25 @@ func listMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 	if metricReq.MType == "gauge" {
 		if _, ok := MetricsRun.gaugeMetric[metricReq.ID]; ok {
-			metricRes.ID, metricRes.MType = metricReq.ID, metricReq.MType
+			metricRes.ID, metricRes.MType, metricRes.Delta = metricReq.ID, metricReq.MType, metricReq.Delta
 			valueRes := MetricsRun.gaugeMetric[metricReq.ID]
 			metricRes.Value = &valueRes
+		} else {
+			w.WriteHeader(http.StatusNotImplemented)
+			return
 		}
 	} else if metricReq.MType == "counter" {
 		if _, ok := MetricsRun.counterMetric[metricReq.ID]; ok {
-			metricRes.ID, metricRes.MType = metricReq.ID, metricReq.MType
+			metricRes.ID, metricRes.MType, metricRes.Value = metricReq.ID, metricReq.MType, metricReq.Value
 			valueRes := MetricsRun.counterMetric[metricReq.ID]
 			metricRes.Delta = &valueRes
+		} else {
+			w.WriteHeader(http.StatusNotImplemented)
+			return
 		}
 	} else {
 		w.WriteHeader(http.StatusNotImplemented)
+		return
 	}
 	if resBody, err := json.Marshal(metricRes); err != nil {
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
