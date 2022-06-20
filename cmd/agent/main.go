@@ -143,7 +143,7 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string) {
 				Post(urlStr.String())
 		}
 	} else {
-		fmt.Println("ERROR: PollCount is 0")
+		fmt.Println("ERROR: Something went wrong while sendingMetricJSON")
 	}
 }
 func handleSignal(signal os.Signal) {

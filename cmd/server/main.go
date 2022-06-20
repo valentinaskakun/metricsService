@@ -27,9 +27,10 @@ var SaveConfigRun storage.SaveConfig
 
 func loadConfig() (config ServerConfig, err error) {
 	viper.SetDefault("ADDRESS", "localhost:8080")
-	viper.SetDefault("STORE_INTERVAL", "300s")
-	viper.SetDefault("STORE_FILE", "/tmp/devops-metrics-db.json")
-	viper.SetDefault("RESTORE ", "true")
+	viper.SetDefault("STORE_INTERVAL", "10s")
+	//viper.SetDefault("STORE_FILE", "/tmp/devops-metrics-db.json")
+	viper.SetDefault("STORE_FILE", "D:\\inn\\go\\yapraktikum\\metricsService\\cmd\\server\\test.json")
+	viper.SetDefault("RESTORE", "true")
 	viper.AutomaticEnv()
 	err = viper.Unmarshal(&config)
 	SaveConfigRun.ToMem = true
@@ -60,11 +61,11 @@ func main() {
 		}
 	}()
 	configRun, _ := loadConfig()
-	if configRun.RESTORE == true {
+	if configRun.RESTORE {
 		metricsRun.RestoreFromFile(configRun.STORE_FILE)
 	}
 	fmt.Println("PRINT AFTER RESTORING", metricsRun)
-	if SaveConfigRun.ToFileSync == false {
+	if !SaveConfigRun.ToFileSync {
 		storeInterval, _ := time.ParseDuration(configRun.STORE_INTERVAL)
 		tickerStore := time.NewTicker(storeInterval)
 		{

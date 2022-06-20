@@ -23,8 +23,6 @@ func ListMetricsAll(metricsRun *storage.Metrics) func(w http.ResponseWriter, r *
 		for key, value := range metricsRun.CounterMetric {
 			fmt.Fprintln(w, key, value)
 		}
-		//metricsRun.SaveToFile("D:\\inn\\go\\yapraktikum\\metricsService\\cmd\\server\\test.json")
-		metricsRun.RestoreFromFile("D:\\inn\\go\\yapraktikum\\metricsService\\cmd\\server\\test.json")
 	}
 }
 func ListMetric(metricsRun *storage.Metrics) func(w http.ResponseWriter, r *http.Request) {

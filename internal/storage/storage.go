@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
+	"os"
 	"sync"
 )
 
@@ -68,13 +70,27 @@ func (m Metrics) GetMetricsFromMem() {
 	}
 }
 func (m *Metrics) SaveToFile(filePath string) {
-	file, _ := json.Marshal(&m)
-	err := ioutil.WriteFile(filePath, file, 0644)
-	fmt.Println(err)
+	fileAttr := os.O_CREATE | os.O_TRUNC | os.O_WRONLY
+	file, err := os.OpenFile(filePath, fileAttr, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	data, err := json.Marshal(&m)
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = file.Write(data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = file.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 func (m *Metrics) RestoreFromFile(filePath string) {
 	byteFile, _ := ioutil.ReadFile(filePath)
-	_ = json.Unmarshal([]byte(byteFile), &m)
+	_ = json.Unmarshal([]byte(byteFile), m)
 	fmt.Println("restoring from", m)
 }
 
