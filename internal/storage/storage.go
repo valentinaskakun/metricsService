@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"sync"
-	"time"
 )
 
 type MetricsJSON struct {
@@ -21,22 +20,25 @@ type Metrics struct {
 	GaugeMetric   map[string]float64 `json:"gaugeMetric"`
 	MuCounter     sync.RWMutex
 	CounterMetric map[string]int64 `json:"counterMetric"`
-	TimeMetric    time.Time
 }
 
 var MetricsInMem Metrics
 
 func (m *Metrics) InitMetrics() {
 	//todo: не понимаю пока что тебе не нравится
-	tempMetrics := new(Metrics)
-	m = tempMetrics
 	m.GaugeMetric = make(map[string]float64)
 	m.CounterMetric = make(map[string]int64)
+	fmt.Println("INIT METRICS", m)
 }
 
-func (m *Metrics) SaveMetrics(filePath string) {
-	m.SaveMetricsToMem()
-	m.SaveToFile(filePath)
+func (m *Metrics) SaveMetrics(saveConfig *SaveConfig) {
+	if saveConfig.ToMem == true {
+		m.SaveMetricsToMem()
+	}
+	if saveConfig.ToFile == true && saveConfig.ToFileSync == true {
+		//todo: добавить обработку ошибок
+		m.SaveToFile(saveConfig.ToFilePath)
+	}
 }
 
 func (m *Metrics) GetMetrics() {
@@ -54,13 +56,16 @@ func (m *Metrics) SaveMetricsToMem() {
 	MetricsInMem.MuCounter.Unlock()
 }
 func (m Metrics) GetMetricsFromMem() {
-	m.InitMetrics()
-	MetricsInMem.MuGauge.Lock()
-	m.GaugeMetric = MetricsInMem.GaugeMetric
-	MetricsInMem.MuGauge.Unlock()
-	MetricsInMem.MuCounter.Lock()
-	m.CounterMetric = MetricsInMem.CounterMetric
-	MetricsInMem.MuCounter.Unlock()
+	if len(MetricsInMem.GaugeMetric) > 0 {
+		MetricsInMem.MuGauge.Lock()
+		m.GaugeMetric = MetricsInMem.GaugeMetric
+		MetricsInMem.MuGauge.Unlock()
+	}
+	if len(MetricsInMem.CounterMetric) > 0 {
+		MetricsInMem.MuCounter.Lock()
+		m.CounterMetric = MetricsInMem.CounterMetric
+		MetricsInMem.MuCounter.Unlock()
+	}
 }
 func (m *Metrics) SaveToFile(filePath string) {
 	file, _ := json.Marshal(&m)
@@ -69,9 +74,9 @@ func (m *Metrics) SaveToFile(filePath string) {
 }
 func (m *Metrics) RestoreFromFile(filePath string) {
 	byteFile, _ := ioutil.ReadFile(filePath)
-	data := Metrics{}
-	_ = json.Unmarshal([]byte(byteFile), &data)
-	fmt.Println(data)
+	//data := Metrics{}
+	_ = json.Unmarshal([]byte(byteFile), &m)
+	//fmt.Println(data)
 }
 
 //закончили упражнение

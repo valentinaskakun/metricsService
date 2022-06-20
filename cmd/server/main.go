@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/spf13/viper"
+	"time"
+
 	//todo: ?
 	"github.com/valentinaskakun/metricsService/internal/handlers"
 	"github.com/valentinaskakun/metricsService/internal/storage"
@@ -20,15 +22,24 @@ type ServerConfig struct {
 	STORE_FILE     string `mapstructure:"STORE_FILE"`
 	RESTORE        bool   `mapstructure:"RESTORE"`
 }
-type
+
+var SaveConfigRun storage.SaveConfig
 
 func loadConfig() (config ServerConfig, err error) {
 	viper.SetDefault("ADDRESS", "localhost:8080")
-	viper.SetDefault("STORE_INTERVAL", "300")
+	viper.SetDefault("STORE_INTERVAL", "300s")
 	viper.SetDefault("STORE_FILE", "/tmp/devops-metrics-db.json")
 	viper.SetDefault("RESTORE ", "true")
 	viper.AutomaticEnv()
 	err = viper.Unmarshal(&config)
+	SaveConfigRun.ToMem = true
+	if config.STORE_FILE != "" {
+		SaveConfigRun.ToFile = true
+		SaveConfigRun.ToFilePath = config.STORE_FILE
+	}
+	if config.STORE_INTERVAL == "0" {
+		SaveConfigRun.ToFileSync = true
+	}
 	return
 }
 
@@ -49,17 +60,23 @@ func main() {
 		}
 	}()
 	configRun, _ := loadConfig()
-	go func() {
-		for {
-			sig := <-sigs
-			handleSignal(sig)
+	if SaveConfigRun.ToFileSync == false {
+		storeInterval, _ := time.ParseDuration(configRun.STORE_INTERVAL)
+		tickerStore := time.NewTicker(storeInterval)
+		{
+			go func() {
+				for range tickerStore.C {
+					metricsRun.GetMetrics()
+					metricsRun.SaveToFile(SaveConfigRun.ToFilePath)
+				}
+			}()
 		}
-	}()
+	}
 	r := chi.NewRouter()
 	r.Get("/", handlers.ListMetricsAll(&metricsRun))
 	r.Route("/update", func(r chi.Router) {
-		r.Post("/", handlers.UpdateMetricJSON(&metricsRun))
-		r.Post("/{metricType}/{metricName}/{metricValue}", handlers.UpdateMetric(&metricsRun))
+		r.Post("/", handlers.UpdateMetricJSON(&metricsRun, &SaveConfigRun))
+		r.Post("/{metricType}/{metricName}/{metricValue}", handlers.UpdateMetric(&metricsRun, &SaveConfigRun))
 	})
 	r.Route("/value", func(r chi.Router) {
 		r.Post("/", handlers.ListMetricJSON(&metricsRun))

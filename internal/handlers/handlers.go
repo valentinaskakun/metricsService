@@ -94,7 +94,7 @@ func ListMetricJSON(metricsRun *storage.Metrics) func(w http.ResponseWriter, r *
 	}
 }
 
-func UpdateMetric(metricsRun *storage.Metrics) func(w http.ResponseWriter, r *http.Request) {
+func UpdateMetric(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricsRun.GetMetrics()
 		metricType := chi.URLParam(r, "metricType")
@@ -121,13 +121,17 @@ func UpdateMetric(metricsRun *storage.Metrics) func(w http.ResponseWriter, r *ht
 		} else {
 			w.WriteHeader(http.StatusNotImplemented)
 		}
-		metricsRun.SaveMetrics()
+		metricsRun.SaveMetrics(saveConfig)
 	}
 }
 
-func UpdateMetricJSON(metricsRun *storage.Metrics) func(w http.ResponseWriter, r *http.Request) {
+func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricsRun.GetMetrics()
+		//fmt.Println("MetricsRun result before make", metricsRun.GaugeMetric)
+		//metricsRun.GaugeMetric = make(map[string]float64)
+		//metricsRun.CounterMetric = make(map[string]int64)
+		//fmt.Println("MetricsRun result", metricsRun)
 		metricReq := storage.MetricsJSON{}
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -147,7 +151,7 @@ func UpdateMetricJSON(metricsRun *storage.Metrics) func(w http.ResponseWriter, r
 		} else {
 			w.WriteHeader(http.StatusNotImplemented)
 		}
-		metricsRun.SaveMetrics()
+		metricsRun.SaveMetrics(saveConfig)
 		w.WriteHeader(http.StatusOK)
 		resBody, _ := json.Marshal("{}")
 		w.Write(resBody)
