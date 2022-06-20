@@ -74,9 +74,8 @@ func (m *Metrics) SaveToFile(filePath string) {
 }
 func (m *Metrics) RestoreFromFile(filePath string) {
 	byteFile, _ := ioutil.ReadFile(filePath)
-	//data := Metrics{}
 	_ = json.Unmarshal([]byte(byteFile), &m)
-	//fmt.Println(data)
+	fmt.Println("restoring from", m)
 }
 
 //закончили упражнение
