@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/valentinaskakun/metricsService/internal/handlers"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -35,7 +36,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 func TestListMetrics(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
-	h := http.HandlerFunc(listMetricsAll)
+	h := http.HandlerFunc(handlers.ListMetricsAll)
 	h.ServeHTTP(w, req)
 	res := w.Result()
 	defer res.Body.Close()
@@ -45,10 +46,8 @@ func TestListMetrics(t *testing.T) {
 }
 func TestPostGetMetrics(t *testing.T) {
 	r := chi.NewRouter()
-	r.Post("/update", updateMetrics)
-	r.Post("/update/{metricType}/{metricName}/{metricValue}", func(w http.ResponseWriter, r *http.Request) {})
-	r.Get("/value", listMetric)
-	r.Get("/value/{metricType}/{metricName}", func(w http.ResponseWriter, r *http.Request) {})
+	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.UpdateMetric)
+	r.Get("/value/{metricType}/{metricName}", handlers.ListMetric)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	testUpdateLink := "/update/counter/testCount/300"

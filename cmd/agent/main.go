@@ -6,31 +6,16 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/spf13/viper"
 	"github.com/valentinaskakun/metricsService/internal/metricsruntime"
+	"github.com/valentinaskakun/metricsService/internal/storage"
 	"math/rand"
 	"net/url"
 	"os"
 	"os/signal"
 	"path"
 	"strconv"
-	"sync"
 	"syscall"
 	"time"
 )
-
-type Metrics struct {
-	muGauge       sync.RWMutex
-	gaugeMetric   map[string]float64
-	muCounter     sync.RWMutex
-	counterMetric map[string]int64
-	timeMetric    time.Time
-}
-
-type MetricsJSON struct {
-	ID    string   `json:"id"`              // имя метрики
-	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
-	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
-}
 
 //todo поправить кейсы переменных
 type AgentConfig struct {
@@ -58,9 +43,10 @@ const (
 var serverToSendProto = "http://"
 var serverToSend = serverToSendProto + "127.0.0.1:8080"
 var metricsListConfig = map[string]bool{"Alloc": true, "BuckHashSys": true, "Frees": true, "GCCPUFraction": true, "GCSys": true, "HeapAlloc": true, "HeapIdle": true, "HeapInuse": true, "HeapObjects": true, "HeapReleased": true, "HeapSys": true, "LastGC": true, "Lookups": true, "MCacheInuse": true, "MCacheSys": true, "MSpanInuse": true, "MSpanSys": true, "Mallocs": true, "NextGC": true, "NumForcedGC": true, "NumGC": true, "OtherSys": true, "PauseTotalNs": true, "StackInuse": true, "StackSys": true, "Sys": true, "TotalAlloc": true, "PollCount": true}
-var MetricsCurrent Metrics
+var MetricsCurrent storage.Metrics
 
 //todo: добавить обработку ошибок
+//todo: закинуть все в модуль datamanipulation
 func updateGaugeMetrics() (metricsGaugeUpdated map[string]float64) {
 	metricsGaugeUpdated = make(map[string]float64)
 	tempCurrentMemStatsMetrics := metricsruntime.GetCurrentValuesRuntimeGauge()
@@ -95,9 +81,9 @@ func updateCounterMetrics(action string, metricsCounterToUpdate map[string]int64
 	return metricsCounterUpdated
 }
 
-func sendMetrics(metricsToSend *Metrics, serverToSendLink string) {
-	if metricsToSend.counterMetric["PollCount"] != 0 {
-		for key, value := range metricsToSend.gaugeMetric {
+func sendMetrics(metricsToSend *storage.Metrics, serverToSendLink string) {
+	if metricsToSend.CounterMetric["PollCount"] != 0 {
+		for key, value := range metricsToSend.GaugeMetric {
 			urlStr, err := url.Parse(serverToSendLink)
 			if err != nil {
 				fmt.Println(err)
@@ -106,7 +92,7 @@ func sendMetrics(metricsToSend *Metrics, serverToSendLink string) {
 			urlStr.Path = path.Join(urlStr.Path, "update", "gauge", key, fmt.Sprintf("%f", value))
 			sendPOST(urlStr.String())
 		}
-		for key, value := range metricsToSend.counterMetric {
+		for key, value := range metricsToSend.CounterMetric {
 			urlStr, err := url.Parse(serverToSendLink)
 			if err != nil {
 				fmt.Println(err)
@@ -129,15 +115,15 @@ func sendPOST(urlString string) {
 }
 
 //todo: переделать использование url server path
-func sendMetricJSON(metricsToSend *Metrics, serverToSendLink string) {
-	if metricsToSend.counterMetric["PollCount"] != 0 {
+func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string) {
+	if metricsToSend.CounterMetric["PollCount"] != 0 {
 		urlStr, _ := url.Parse(serverToSendLink)
 		urlStr.Path = path.Join(urlStr.Path, "update")
 		client := resty.New()
 		client.R().
 			SetHeader("Content-Type", "Content-Type: application/json")
-		for key, value := range metricsToSend.gaugeMetric {
-			metricToSend, err := json.Marshal(MetricsJSON{ID: key, MType: "gauge", Value: &value})
+		for key, value := range metricsToSend.GaugeMetric {
+			metricToSend, err := json.Marshal(storage.MetricsJSON{ID: key, MType: "gauge", Value: &value})
 			if err != nil {
 				fmt.Println(err)
 				return
@@ -146,8 +132,8 @@ func sendMetricJSON(metricsToSend *Metrics, serverToSendLink string) {
 				SetBody(metricToSend).
 				Post(urlStr.String())
 		}
-		for key, value := range metricsToSend.counterMetric {
-			metricToSend, err := json.Marshal(MetricsJSON{ID: key, MType: "counter", Delta: &value})
+		for key, value := range metricsToSend.CounterMetric {
+			metricToSend, err := json.Marshal(storage.MetricsJSON{ID: key, MType: "counter", Delta: &value})
 			if err != nil {
 				fmt.Println(err)
 				return
@@ -183,20 +169,20 @@ func main() {
 	go func() {
 		for range tickerPoll.C {
 			//todo проверить локи, они рааботают вообще норм или нет
-			MetricsCurrent.muGauge.Lock()
-			MetricsCurrent.gaugeMetric = updateGaugeMetrics()
-			MetricsCurrent.muGauge.Unlock()
-			MetricsCurrent.muCounter.Lock()
-			MetricsCurrent.counterMetric = updateCounterMetrics("add", MetricsCurrent.counterMetric)
-			MetricsCurrent.muCounter.Unlock()
+			MetricsCurrent.MuGauge.Lock()
+			MetricsCurrent.GaugeMetric = updateGaugeMetrics()
+			MetricsCurrent.MuGauge.Unlock()
+			MetricsCurrent.MuCounter.Lock()
+			MetricsCurrent.CounterMetric = updateCounterMetrics("add", MetricsCurrent.CounterMetric)
+			MetricsCurrent.MuCounter.Unlock()
 		}
 	}()
 	go func() {
 		for range tickerReport.C {
 			sendMetricJSON(&MetricsCurrent, serverToSendProto+configRun.ADDRESS)
-			MetricsCurrent.muCounter.Lock()
-			MetricsCurrent.counterMetric = updateCounterMetrics("init", MetricsCurrent.counterMetric)
-			MetricsCurrent.muCounter.Unlock()
+			MetricsCurrent.MuCounter.Lock()
+			MetricsCurrent.CounterMetric = updateCounterMetrics("init", MetricsCurrent.CounterMetric)
+			MetricsCurrent.MuCounter.Unlock()
 		}
 	}()
 	select {}
