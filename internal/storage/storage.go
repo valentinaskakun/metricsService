@@ -58,7 +58,7 @@ func (m *Metrics) SaveMetricsToMem() {
 	MetricsInMem.CounterMetric = m.CounterMetric
 	MetricsInMem.MuCounter.Unlock()
 }
-func (m Metrics) GetMetricsFromMem() {
+func (m *Metrics) GetMetricsFromMem() {
 	if len(MetricsInMem.GaugeMetric) > 0 {
 		MetricsInMem.MuGauge.Lock()
 		m.GaugeMetric = MetricsInMem.GaugeMetric

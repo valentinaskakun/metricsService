@@ -27,9 +27,6 @@ func LoadConfigServer() (config ConfServer, err error) {
 	flag.StringVar(&config.StoreFile, "f", "/tmp/devops-metrics-db.json", "")
 	flag.BoolVar(&config.Restore, "r", true, "")
 	flag.Parse()
-	if err != nil {
-		log.Fatal(err)
-	}
 	err = env.Parse(&config)
 	if err != nil {
 		log.Fatal(err)
@@ -48,9 +45,6 @@ func LoadConfigAgent() (config ConfAgent, err error) {
 	flag.StringVar(&config.ReportInterval, "r", "10s", "")
 	flag.StringVar(&config.PollInterval, "p", "2s", "")
 	flag.Parse()
-	if err != nil {
-		log.Fatal(err)
-	}
 	err = env.Parse(&config)
 	if err != nil {
 		log.Fatal(err)
