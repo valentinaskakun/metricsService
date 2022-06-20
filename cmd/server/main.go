@@ -28,7 +28,7 @@ var SaveConfigRun storage.SaveConfig
 func loadConfig() (config ServerConfig, err error) {
 	viper.SetDefault("ADDRESS", "localhost:8080")
 	viper.SetDefault("STORE_INTERVAL", "300s")
-	viper.SetDefault("STORE_FILE", "D:\\inn\\go\\yapraktikum\\metricsService\\cmd\\server\\test.json")
+	viper.SetDefault("STORE_FILE", "/tmp/devops-metrics-db.json")
 	viper.SetDefault("RESTORE ", "true")
 	viper.AutomaticEnv()
 	err = viper.Unmarshal(&config)
