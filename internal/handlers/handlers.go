@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/valentinaskakun/metricsService/internal/config"
 	"github.com/valentinaskakun/metricsService/internal/storage"
 	"io/ioutil"
 	"net/http"
@@ -92,7 +93,7 @@ func ListMetricJSON(metricsRun *storage.Metrics) func(w http.ResponseWriter, r *
 	}
 }
 
-func UpdateMetric(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
+func UpdateMetric(metricsRun *storage.Metrics, saveConfig *config.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricsRun.GetMetrics()
 		metricType := chi.URLParam(r, "metricType")
@@ -123,7 +124,7 @@ func UpdateMetric(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) f
 	}
 }
 
-func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
+func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *config.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricsRun.GetMetrics()
 		//fmt.Println("MetricsRun result before make", metricsRun.GaugeMetric)

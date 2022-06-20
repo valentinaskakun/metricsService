@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/valentinaskakun/metricsService/internal/config"
 	"github.com/valentinaskakun/metricsService/internal/handlers"
+	"github.com/valentinaskakun/metricsService/internal/storage"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -34,9 +36,11 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 
 //todo: больше тестов "api"
 func TestListMetrics(t *testing.T) {
+	var metricsRun storage.Metrics
+	metricsRun.InitMetrics()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
-	h := http.HandlerFunc(handlers.ListMetricsAll)
+	h := http.HandlerFunc(handlers.ListMetricsAll(&metricsRun))
 	h.ServeHTTP(w, req)
 	res := w.Result()
 	defer res.Body.Close()
@@ -45,9 +49,13 @@ func TestListMetrics(t *testing.T) {
 	}
 }
 func TestPostGetMetrics(t *testing.T) {
+	var metricsRun storage.Metrics
+	var saveConfigRun config.SaveConfig
+	metricsRun.InitMetrics()
+	saveConfigRun.ToMem = true
 	r := chi.NewRouter()
-	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.UpdateMetric)
-	r.Get("/value/{metricType}/{metricName}", handlers.ListMetric)
+	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.UpdateMetric(&metricsRun, &saveConfigRun))
+	r.Get("/value/{metricType}/{metricName}", handlers.ListMetric(&metricsRun))
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	testUpdateLink := "/update/counter/testCount/300"

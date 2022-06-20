@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-resty/resty/v2"
-	"github.com/spf13/viper"
+	"github.com/valentinaskakun/metricsService/internal/config"
 	"github.com/valentinaskakun/metricsService/internal/metricsruntime"
 	"github.com/valentinaskakun/metricsService/internal/storage"
 	"math/rand"
@@ -17,22 +17,7 @@ import (
 	"time"
 )
 
-//todo поправить кейсы переменных
-type AgentConfig struct {
-	ADDRESS         string `mapstructure:"ADDRESS"`
-	REPORT_INTERVAL string `mapstructure:"REPORT_INTERVAL"`
-	POLL_INTERVAL   string `mapstructure:"POLL_INTERVAL"`
-}
-
-func loadConfig() (config AgentConfig, err error) {
-	viper.SetDefault("ADDRESS", "localhost:8080")
-	viper.SetDefault("REPORT_INTERVAL", "10s")
-	viper.SetDefault("POLL_INTERVAL", "2s")
-	viper.AutomaticEnv()
-	err = viper.Unmarshal(&config)
-	return
-}
-
+//todo: навести порядок
 const (
 	pollIntervalConst   = 2000
 	reportIntervalConst = 4000
@@ -40,10 +25,9 @@ const (
 
 //var pollInterval time.Duration = pollIntervalConst     //Milliseconds
 //var reportInterval time.Duration = reportIntervalConst //Milliseconds
-var serverToSendProto = "http://"
-var serverToSend = serverToSendProto + "127.0.0.1:8080"
 var metricsListConfig = map[string]bool{"Alloc": true, "BuckHashSys": true, "Frees": true, "GCCPUFraction": true, "GCSys": true, "HeapAlloc": true, "HeapIdle": true, "HeapInuse": true, "HeapObjects": true, "HeapReleased": true, "HeapSys": true, "LastGC": true, "Lookups": true, "MCacheInuse": true, "MCacheSys": true, "MSpanInuse": true, "MSpanSys": true, "Mallocs": true, "NextGC": true, "NumForcedGC": true, "NumGC": true, "OtherSys": true, "PauseTotalNs": true, "StackInuse": true, "StackSys": true, "Sys": true, "TotalAlloc": true, "PollCount": true}
 var MetricsCurrent storage.Metrics
+var serverToSendProto = "http://"
 
 //todo: добавить обработку ошибок
 //todo: закинуть все в модуль datamanipulation
@@ -151,10 +135,10 @@ func handleSignal(signal os.Signal) {
 	os.Exit(-1)
 }
 func main() {
-	configRun, _ := loadConfig()
+	configRun, _ := config.LoadConfigAgent()
 	fmt.Println(configRun)
-	pollInterval, _ := time.ParseDuration(configRun.POLL_INTERVAL)
-	reportInterval, _ := time.ParseDuration(configRun.REPORT_INTERVAL)
+	pollInterval, _ := time.ParseDuration(configRun.PollInterval)
+	reportInterval, _ := time.ParseDuration(configRun.ReportInterval)
 	tickerPoll := time.NewTicker(pollInterval)
 	tickerReport := time.NewTicker(reportInterval)
 	sigs := make(chan os.Signal, 1)
@@ -179,7 +163,7 @@ func main() {
 	}()
 	go func() {
 		for range tickerReport.C {
-			sendMetricJSON(&MetricsCurrent, serverToSendProto+configRun.ADDRESS)
+			sendMetricJSON(&MetricsCurrent, serverToSendProto+configRun.Address)
 			MetricsCurrent.MuCounter.Lock()
 			MetricsCurrent.CounterMetric = updateCounterMetrics("init", MetricsCurrent.CounterMetric)
 			MetricsCurrent.MuCounter.Unlock()

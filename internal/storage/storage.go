@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/valentinaskakun/metricsService/internal/config"
 	"io/ioutil"
 	"log"
 	"os"
@@ -33,7 +34,7 @@ func (m *Metrics) InitMetrics() {
 	fmt.Println("INIT METRICS", m)
 }
 
-func (m *Metrics) SaveMetrics(saveConfig *SaveConfig) {
+func (m *Metrics) SaveMetrics(saveConfig *config.SaveConfig) {
 	if saveConfig.ToMem == true {
 		m.SaveMetricsToMem()
 	}
