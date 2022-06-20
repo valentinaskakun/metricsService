@@ -1,11 +1,11 @@
 package main
 
 import (
+	//todo: ?
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/valentinaskakun/metricsService/internal/compress"
 	"github.com/valentinaskakun/metricsService/internal/config"
-	"time"
-	//todo: ?
 	"github.com/valentinaskakun/metricsService/internal/handlers"
 	"github.com/valentinaskakun/metricsService/internal/storage"
 	"log"
@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func handleSignal(signal os.Signal) {
@@ -45,6 +46,7 @@ func main() {
 		SaveConfigRun.ToFileSync = true
 	}
 	if configRun.Restore {
+		//todo: добавить ошибки на случай отсутствия файла
 		metricsRun.RestoreFromFile(configRun.StoreFile)
 	}
 	//если не нужно поддерживать синхронность, создаем тикер, только почему так криво
@@ -71,5 +73,5 @@ func main() {
 		r.Post("/", handlers.ListMetricJSON(&metricsRun))
 		r.Get("/{metricType}/{metricName}", handlers.ListMetric(&metricsRun))
 	})
-	log.Fatal(http.ListenAndServe(configRun.Address, r))
+	log.Fatal(http.ListenAndServe(configRun.Address, compress.GzipHandle(r)))
 }
