@@ -25,7 +25,7 @@ func GzipHandle(next http.Handler) http.Handler {
 				return
 			}
 			defer gz.Close()
-			r.Body = gz
+			r.Body = io.ReadCloser(gz)
 		}
 		// проверяем, что клиент поддерживает gzip-сжатие
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
