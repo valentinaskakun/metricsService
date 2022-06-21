@@ -34,6 +34,7 @@ func GzipHandle(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		//todo: добавить ограничения по типу файлов и размеру (?проверить по тестам)
 		//contentToZip := map[string]bool{"application/javascript": true, "application/json": true, "text/css": true, "text/html": true, "text/plain": true, "text/xml": true}
 		//if _, ok := contentToZip[r.Header.Get("Content-Type")]; !ok {
 		//	next.ServeHTTP(w, r)

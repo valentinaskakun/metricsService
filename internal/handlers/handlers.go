@@ -128,10 +128,6 @@ func UpdateMetric(metricsRun *storage.Metrics, saveConfig *config.SaveConfig) fu
 func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *config.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricsRun.GetMetrics()
-		//fmt.Println("MetricsRun result before make", metricsRun.GaugeMetric)
-		//metricsRun.GaugeMetric = make(map[string]float64)
-		//metricsRun.CounterMetric = make(map[string]int64)
-		//fmt.Println("MetricsRun result", metricsRun)
 		metricReq := storage.MetricsJSON{}
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {

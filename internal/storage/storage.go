@@ -16,7 +16,6 @@ type MetricsJSON struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
-//todo: структуру в модуль +  интерфейс хранения
 type Metrics struct {
 	MuGauge       sync.RWMutex
 	GaugeMetric   map[string]float64 `json:"gaugeMetric"`
@@ -47,7 +46,6 @@ func (m *Metrics) GetMetrics() {
 }
 
 //todo: добавить сохранение метрик по имени?
-//чекнули хранение
 func (m *Metrics) SaveMetricsToMem() {
 	MetricsInMem.MuGauge.Lock()
 	MetricsInMem.GaugeMetric = m.GaugeMetric
@@ -91,5 +89,3 @@ func (m *Metrics) RestoreFromFile(filePath string) {
 	byteFile, _ := ioutil.ReadFile(filePath)
 	_ = json.Unmarshal([]byte(byteFile), m)
 }
-
-//закончили упражнение

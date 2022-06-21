@@ -136,7 +136,6 @@ func handleSignal(signal os.Signal) {
 }
 func main() {
 	configRun, _ := config.LoadConfigAgent()
-	fmt.Println(configRun)
 	pollInterval, _ := time.ParseDuration(configRun.PollInterval)
 	reportInterval, _ := time.ParseDuration(configRun.ReportInterval)
 	tickerPoll := time.NewTicker(pollInterval)
