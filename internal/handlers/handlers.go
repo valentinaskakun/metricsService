@@ -15,6 +15,7 @@ import (
 func ListMetricsAll(metricsRun *storage.Metrics) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricsRun.GetMetrics()
+		w.Header().Set("Content-Type", "html/text")
 		fmt.Fprintln(w, "METRICS GAUGE:")
 		//todo: нужно ли добавлять RLock
 		for key, value := range metricsRun.GaugeMetric {
