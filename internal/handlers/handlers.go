@@ -3,18 +3,19 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/valentinaskakun/metricsService/internal/config"
-	"github.com/valentinaskakun/metricsService/internal/storage"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+
+	"github.com/valentinaskakun/metricsService/internal/storage"
+
+	"github.com/go-chi/chi/v5"
 )
 
 //todo: добавить интерфейсы для хэндлеров/метод сет?
-func ListMetricsAll(metricsRun *storage.Metrics) func(w http.ResponseWriter, r *http.Request) {
+func ListMetricsAll(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		metricsRun.GetMetrics()
+		metricsRun.GetMetrics(saveConfig)
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprintln(w, "METRICS GAUGE:")
 		//todo: нужно ли добавлять RLock
@@ -27,9 +28,9 @@ func ListMetricsAll(metricsRun *storage.Metrics) func(w http.ResponseWriter, r *
 		}
 	}
 }
-func ListMetric(metricsRun *storage.Metrics) func(w http.ResponseWriter, r *http.Request) {
+func ListMetric(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		metricsRun.GetMetrics()
+		metricsRun.GetMetrics(saveConfig)
 		metricType := chi.URLParam(r, "metricType")
 		metricName := chi.URLParam(r, "metricName")
 		if metricType == "gauge" {
@@ -50,9 +51,9 @@ func ListMetric(metricsRun *storage.Metrics) func(w http.ResponseWriter, r *http
 	}
 }
 
-func ListMetricJSON(metricsRun *storage.Metrics) func(w http.ResponseWriter, r *http.Request) {
+func ListMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		metricsRun.GetMetrics()
+		metricsRun.GetMetrics(saveConfig)
 		w.Header().Set("Content-Type", "application/json")
 		metricReq, metricRes := storage.MetricsJSON{}, storage.MetricsJSON{}
 		body, err := ioutil.ReadAll(r.Body)
@@ -94,9 +95,9 @@ func ListMetricJSON(metricsRun *storage.Metrics) func(w http.ResponseWriter, r *
 	}
 }
 
-func UpdateMetric(metricsRun *storage.Metrics, saveConfig *config.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
+func UpdateMetric(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		metricsRun.GetMetrics()
+		metricsRun.GetMetrics(saveConfig)
 		metricType := chi.URLParam(r, "metricType")
 		metricName := chi.URLParam(r, "metricName")
 		metricValue := chi.URLParam(r, "metricValue")
@@ -125,9 +126,9 @@ func UpdateMetric(metricsRun *storage.Metrics, saveConfig *config.SaveConfig) fu
 	}
 }
 
-func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *config.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
+func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		metricsRun.GetMetrics()
+		metricsRun.GetMetrics(saveConfig)
 		metricReq := storage.MetricsJSON{}
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {

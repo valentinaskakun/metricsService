@@ -2,12 +2,20 @@ package storage
 
 import (
 	"encoding/json"
-	"github.com/valentinaskakun/metricsService/internal/config"
 	"io/ioutil"
 	"log"
 	"os"
 	"sync"
 )
+
+type SaveConfig struct {
+	ToMem        bool
+	MetricsInMem Metrics
+	ToFile       bool
+	ToFilePath   string
+	ToFileSync   bool
+	ToDatabase   bool
+}
 
 type MetricsJSON struct {
 	ID    string   `json:"id"`              // имя метрики
@@ -23,17 +31,15 @@ type Metrics struct {
 	CounterMetric map[string]int64 `json:"counterMetric"`
 }
 
-var MetricsInMem Metrics
-
 func (m *Metrics) InitMetrics() {
 	//todo: разобраться с инициализацией
 	m.GaugeMetric = make(map[string]float64)
 	m.CounterMetric = make(map[string]int64)
 }
 
-func (m *Metrics) SaveMetrics(saveConfig *config.SaveConfig) {
+func (m *Metrics) SaveMetrics(saveConfig *SaveConfig) {
 	if saveConfig.ToMem {
-		m.SaveMetricsToMem()
+		m.SaveMetricsToMem(&saveConfig.MetricsInMem)
 	}
 	if saveConfig.ToFile && saveConfig.ToFileSync {
 		//todo: добавить обработку ошибок
@@ -41,29 +47,29 @@ func (m *Metrics) SaveMetrics(saveConfig *config.SaveConfig) {
 	}
 }
 
-func (m *Metrics) GetMetrics() {
-	m.GetMetricsFromMem()
+func (m *Metrics) GetMetrics(saveConfig *SaveConfig) {
+	m.GetMetricsFromMem(&saveConfig.MetricsInMem)
 }
 
 //todo: добавить сохранение метрик по имени?
-func (m *Metrics) SaveMetricsToMem() {
-	MetricsInMem.MuGauge.Lock()
-	MetricsInMem.GaugeMetric = m.GaugeMetric
-	MetricsInMem.MuGauge.Unlock()
-	MetricsInMem.MuCounter.Lock()
-	MetricsInMem.CounterMetric = m.CounterMetric
-	MetricsInMem.MuCounter.Unlock()
+func (m *Metrics) SaveMetricsToMem(metricsInMem *Metrics) {
+	metricsInMem.MuGauge.Lock()
+	metricsInMem.GaugeMetric = m.GaugeMetric
+	metricsInMem.MuGauge.Unlock()
+	metricsInMem.MuCounter.Lock()
+	metricsInMem.CounterMetric = m.CounterMetric
+	metricsInMem.MuCounter.Unlock()
 }
-func (m *Metrics) GetMetricsFromMem() {
-	if len(MetricsInMem.GaugeMetric) > 0 {
-		MetricsInMem.MuGauge.Lock()
-		m.GaugeMetric = MetricsInMem.GaugeMetric
-		MetricsInMem.MuGauge.Unlock()
+func (m *Metrics) GetMetricsFromMem(metricsInMem *Metrics) {
+	if len(metricsInMem.GaugeMetric) > 0 {
+		metricsInMem.MuGauge.Lock()
+		m.GaugeMetric = metricsInMem.GaugeMetric
+		metricsInMem.MuGauge.Unlock()
 	}
-	if len(MetricsInMem.CounterMetric) > 0 {
-		MetricsInMem.MuCounter.Lock()
-		m.CounterMetric = MetricsInMem.CounterMetric
-		MetricsInMem.MuCounter.Unlock()
+	if len(metricsInMem.CounterMetric) > 0 {
+		metricsInMem.MuCounter.Lock()
+		m.CounterMetric = metricsInMem.CounterMetric
+		metricsInMem.MuCounter.Unlock()
 	}
 }
 func (m *Metrics) SaveToFile(filePath string) {
@@ -87,5 +93,5 @@ func (m *Metrics) SaveToFile(filePath string) {
 }
 func (m *Metrics) RestoreFromFile(filePath string) {
 	byteFile, _ := ioutil.ReadFile(filePath)
-	_ = json.Unmarshal([]byte(byteFile), m)
+	_ = json.Unmarshal(byteFile, m)
 }

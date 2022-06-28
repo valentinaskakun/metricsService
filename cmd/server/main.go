@@ -1,19 +1,20 @@
 package main
 
 import (
-	//todo: ?
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/valentinaskakun/metricsService/internal/compress"
-	"github.com/valentinaskakun/metricsService/internal/config"
-	"github.com/valentinaskakun/metricsService/internal/handlers"
-	"github.com/valentinaskakun/metricsService/internal/storage"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/valentinaskakun/metricsService/internal/compress"
+	"github.com/valentinaskakun/metricsService/internal/config"
+	"github.com/valentinaskakun/metricsService/internal/handlers"
+	"github.com/valentinaskakun/metricsService/internal/storage"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func handleSignal(signal os.Signal) {
@@ -35,43 +36,46 @@ func main() {
 	var metricsRun storage.Metrics
 	metricsRun.InitMetrics()
 	//парс конфига
-	var SaveConfigRun config.SaveConfig
+	var saveConfigRun storage.SaveConfig
 	configRun, _ := config.LoadConfigServer()
-	SaveConfigRun.ToMem = true
+	saveConfigRun.ToMem = true
+	if saveConfigRun.ToMem {
+		saveConfigRun.MetricsInMem.InitMetrics()
+	}
 	if configRun.StoreFile != "" {
-		SaveConfigRun.ToFile = true
-		SaveConfigRun.ToFilePath = configRun.StoreFile
+		saveConfigRun.ToFile = true
+		saveConfigRun.ToFilePath = configRun.StoreFile
 	}
 	if configRun.StoreInterval == "0" {
-		SaveConfigRun.ToFileSync = true
+		saveConfigRun.ToFileSync = true
 	}
 	if configRun.Restore {
 		//todo: добавить ошибки на случай отсутствия файла
 		metricsRun.RestoreFromFile(configRun.StoreFile)
 	}
 	//если не нужно поддерживать синхронность, создаем тикер, только почему так криво
-	if !SaveConfigRun.ToFileSync {
+	if !saveConfigRun.ToFileSync {
 		storeInterval, _ := time.ParseDuration(configRun.StoreInterval)
 		tickerStore := time.NewTicker(storeInterval)
 		{
 			go func() {
 				for range tickerStore.C {
-					metricsRun.GetMetrics()
-					metricsRun.SaveToFile(SaveConfigRun.ToFilePath)
+					metricsRun.GetMetrics(&saveConfigRun)
+					metricsRun.SaveToFile(saveConfigRun.ToFilePath)
 				}
 			}()
 		}
 	}
 	//обработка запросов
 	r := chi.NewRouter()
-	r.Get("/", handlers.ListMetricsAll(&metricsRun))
+	r.Get("/", handlers.ListMetricsAll(&metricsRun, &saveConfigRun))
 	r.Route("/update", func(r chi.Router) {
-		r.Post("/", handlers.UpdateMetricJSON(&metricsRun, &SaveConfigRun))
-		r.Post("/{metricType}/{metricName}/{metricValue}", handlers.UpdateMetric(&metricsRun, &SaveConfigRun))
+		r.Post("/", handlers.UpdateMetricJSON(&metricsRun, &saveConfigRun))
+		r.Post("/{metricType}/{metricName}/{metricValue}", handlers.UpdateMetric(&metricsRun, &saveConfigRun))
 	})
 	r.Route("/value", func(r chi.Router) {
-		r.Post("/", handlers.ListMetricJSON(&metricsRun))
-		r.Get("/{metricType}/{metricName}", handlers.ListMetric(&metricsRun))
+		r.Post("/", handlers.ListMetricJSON(&metricsRun, &saveConfigRun))
+		r.Get("/{metricType}/{metricName}", handlers.ListMetric(&metricsRun, &saveConfigRun))
 	})
 	log.Fatal(http.ListenAndServe(configRun.Address, compress.GzipHandle(r)))
 }

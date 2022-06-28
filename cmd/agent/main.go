@@ -3,10 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-resty/resty/v2"
-	"github.com/valentinaskakun/metricsService/internal/config"
-	"github.com/valentinaskakun/metricsService/internal/metricsruntime"
-	"github.com/valentinaskakun/metricsService/internal/storage"
+	"log"
 	"math/rand"
 	"net/url"
 	"os"
@@ -15,6 +12,12 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/valentinaskakun/metricsService/internal/config"
+	"github.com/valentinaskakun/metricsService/internal/metricsruntime"
+	"github.com/valentinaskakun/metricsService/internal/storage"
+
+	"github.com/go-resty/resty/v2"
 )
 
 //todo: навести порядок
@@ -112,9 +115,13 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string) {
 				fmt.Println(err)
 				return
 			}
-			client.R().
+			_, err = client.R().
 				SetBody(metricToSend).
 				Post(urlStr.String())
+			if err != nil {
+				log.Default()
+				return
+			}
 		}
 		for key, value := range metricsToSend.CounterMetric {
 			metricToSend, err := json.Marshal(storage.MetricsJSON{ID: key, MType: "counter", Delta: &value})
@@ -122,9 +129,13 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string) {
 				fmt.Println(err)
 				return
 			}
-			client.R().
+			_, err = client.R().
 				SetBody(metricToSend).
 				Post(urlStr.String())
+			if err != nil {
+				log.Default()
+				return
+			}
 		}
 	} else {
 		fmt.Println("ERROR: Something went wrong while sendingMetricJSON")
@@ -151,7 +162,6 @@ func main() {
 	//todo добавить WG
 	go func() {
 		for range tickerPoll.C {
-			//todo проверить локи, они рааботают вообще норм или нет
 			MetricsCurrent.MuGauge.Lock()
 			MetricsCurrent.GaugeMetric = updateGaugeMetrics()
 			MetricsCurrent.MuGauge.Unlock()

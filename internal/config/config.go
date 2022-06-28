@@ -2,17 +2,10 @@ package config
 
 import (
 	"flag"
-	"github.com/caarlos0/env/v6"
 	"log"
-)
 
-type SaveConfig struct {
-	ToMem      bool
-	ToFile     bool
-	ToFilePath string
-	ToFileSync bool
-	ToDatabase bool
-}
+	"github.com/caarlos0/env/v6"
+)
 
 type ConfServer struct {
 	Address       string `env:"ADDRESS"`
