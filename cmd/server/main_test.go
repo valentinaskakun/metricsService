@@ -2,15 +2,16 @@ package main
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/valentinaskakun/metricsService/internal/config"
-	"github.com/valentinaskakun/metricsService/internal/handlers"
-	"github.com/valentinaskakun/metricsService/internal/storage"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/valentinaskakun/metricsService/internal/handlers"
+	"github.com/valentinaskakun/metricsService/internal/storage"
 )
 
 var serverAddr = "http://127.0.0.1:8080"
@@ -38,9 +39,13 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 func TestListMetrics(t *testing.T) {
 	var metricsRun storage.Metrics
 	metricsRun.InitMetrics()
+	var saveConfigRun storage.SaveConfig
+	metricsRun.InitMetrics()
+	saveConfigRun.ToMem = true
+	saveConfigRun.MetricsInMem.InitMetrics()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
-	h := http.HandlerFunc(handlers.ListMetricsAll(&metricsRun))
+	h := http.HandlerFunc(handlers.ListMetricsAll(&metricsRun, &saveConfigRun))
 	h.ServeHTTP(w, req)
 	res := w.Result()
 	defer res.Body.Close()
@@ -50,12 +55,13 @@ func TestListMetrics(t *testing.T) {
 }
 func TestPostGetMetrics(t *testing.T) {
 	var metricsRun storage.Metrics
-	var saveConfigRun config.SaveConfig
+	var saveConfigRun storage.SaveConfig
 	metricsRun.InitMetrics()
 	saveConfigRun.ToMem = true
+	saveConfigRun.MetricsInMem.InitMetrics()
 	r := chi.NewRouter()
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.UpdateMetric(&metricsRun, &saveConfigRun))
-	r.Get("/value/{metricType}/{metricName}", handlers.ListMetric(&metricsRun))
+	r.Get("/value/{metricType}/{metricName}", handlers.ListMetric(&metricsRun, &saveConfigRun))
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	testUpdateLink := "/update/counter/testCount/300"
