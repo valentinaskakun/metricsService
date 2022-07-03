@@ -51,13 +51,10 @@ func LoadConfigAgent() (config ConfAgent, err error) {
 	return
 }
 
-func Hash(msg string, key string) (hash string, err error) {
+func Hash(msg string, key string) (hash string) {
 	src := []byte(msg)
 	h := hmac.New(sha256.New, []byte(key))
 	h.Write(src)
 	hash = string(h.Sum(nil))
-	if err != nil {
-		log.Fatal(err)
-	}
 	return
 }

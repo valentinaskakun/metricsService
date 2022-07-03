@@ -117,12 +117,8 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, con
 				return
 			}
 			if len(configRun.Key) > 0 {
-				hashValue, err := config.Hash(fmt.Sprintf("%s:gauge:%f", key, value), configRun.Key)
+				hashValue := config.Hash(fmt.Sprintf("%s:gauge:%f", key, value), configRun.Key)
 				fmt.Println(hashValue)
-				if err != nil {
-					fmt.Println(err)
-					return
-				}
 				metricToSend, err = json.Marshal(storage.MetricsJSON{ID: key, MType: "gauge", Value: &value, Hash: hashValue})
 				if err != nil {
 					fmt.Println(err)
@@ -180,22 +176,15 @@ func main() {
 			MetricsCurrent.GaugeMetric = updateGaugeMetrics()
 			MetricsCurrent.MuGauge.Unlock()
 			MetricsCurrent.MuCounter.Lock()
-<<<<<<< HEAD
 			//todo: переделать add по-человечески
-=======
->>>>>>> b98348e5dd4422ed0ca183164d6020297ad88c8a
 			MetricsCurrent.CounterMetric = updateCounterMetrics("add", MetricsCurrent.CounterMetric)
 			MetricsCurrent.MuCounter.Unlock()
 		}
 	}()
 	go func() {
 		for range tickerReport.C {
-<<<<<<< HEAD
 			//todo: убрать второй аргумент
 			sendMetricJSON(&MetricsCurrent, serverToSendProto+configRun.Address, &configRun)
-=======
-			sendMetricJSON(&MetricsCurrent, serverToSendProto+configRun.Address)
->>>>>>> b98348e5dd4422ed0ca183164d6020297ad88c8a
 			MetricsCurrent.MuCounter.Lock()
 			MetricsCurrent.CounterMetric = updateCounterMetrics("init", MetricsCurrent.CounterMetric)
 			MetricsCurrent.MuCounter.Unlock()
