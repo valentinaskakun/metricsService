@@ -4,7 +4,7 @@ import (
 	"runtime"
 )
 
-//добавить обработку ошибок(?)
+//todo: добавить обработку ошибок(?)
 func GetCurrentValuesRuntimeGauge() map[string]float64 {
 	currentValuesRuntimeGauge := make(map[string]float64)
 	currentMemStats := new(runtime.MemStats)
