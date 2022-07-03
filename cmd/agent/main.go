@@ -102,8 +102,12 @@ func sendPOST(urlString string) {
 }
 
 //todo: переделать использование url server path
+<<<<<<< HEAD
 //todo: добавить использование configRun-полей
 func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, configRun *config.ConfAgent) {
+=======
+func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string) {
+>>>>>>> b98348e5dd4422ed0ca183164d6020297ad88c8a
 	if metricsToSend.CounterMetric["PollCount"] != 0 {
 		urlStr, _ := url.Parse(serverToSendLink)
 		urlStr.Path = path.Join(urlStr.Path, "update")
@@ -116,6 +120,7 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, con
 				fmt.Println(err)
 				return
 			}
+<<<<<<< HEAD
 			if len(configRun.Key) > 0 {
 				hashValue, err := config.Hash(fmt.Sprintf("%s:gauge:%f", key, value), configRun.Key)
 				fmt.Println(hashValue)
@@ -129,6 +134,8 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, con
 					return
 				}
 			}
+=======
+>>>>>>> b98348e5dd4422ed0ca183164d6020297ad88c8a
 			_, err = client.R().
 				SetBody(metricToSend).
 				Post(urlStr.String())
@@ -180,15 +187,22 @@ func main() {
 			MetricsCurrent.GaugeMetric = updateGaugeMetrics()
 			MetricsCurrent.MuGauge.Unlock()
 			MetricsCurrent.MuCounter.Lock()
+<<<<<<< HEAD
 			//todo: переделать add по-человечески
+=======
+>>>>>>> b98348e5dd4422ed0ca183164d6020297ad88c8a
 			MetricsCurrent.CounterMetric = updateCounterMetrics("add", MetricsCurrent.CounterMetric)
 			MetricsCurrent.MuCounter.Unlock()
 		}
 	}()
 	go func() {
 		for range tickerReport.C {
+<<<<<<< HEAD
 			//todo: убрать второй аргумент
 			sendMetricJSON(&MetricsCurrent, serverToSendProto+configRun.Address, &configRun)
+=======
+			sendMetricJSON(&MetricsCurrent, serverToSendProto+configRun.Address)
+>>>>>>> b98348e5dd4422ed0ca183164d6020297ad88c8a
 			MetricsCurrent.MuCounter.Lock()
 			MetricsCurrent.CounterMetric = updateCounterMetrics("init", MetricsCurrent.CounterMetric)
 			MetricsCurrent.MuCounter.Unlock()
