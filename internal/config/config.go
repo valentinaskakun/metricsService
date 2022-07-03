@@ -16,6 +16,7 @@ type ConfServer struct {
 	StoreInterval string `env:"STORE_INTERVAL"`
 	StoreFile     string `env:"STORE_FILE"`
 	Key           string `env:"KEY"`
+	Database      string `env:"DATABASE_DSN "`
 	Restore       bool   `env:"RESTORE"`
 }
 
@@ -23,6 +24,7 @@ func LoadConfigServer() (config ConfServer, err error) {
 	flag.StringVar(&config.Address, "a", ":8080", "")
 	flag.StringVar(&config.StoreInterval, "i", "300s", "")
 	flag.StringVar(&config.StoreFile, "f", "/tmp/devops-metrics-db.json", "")
+	flag.StringVar(&config.Database, "d", "", "")
 	flag.StringVar(&config.Key, "k", "", "")
 	flag.BoolVar(&config.Restore, "r", true, "")
 	flag.Parse()

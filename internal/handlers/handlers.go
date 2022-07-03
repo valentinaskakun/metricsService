@@ -1,16 +1,20 @@
 package handlers
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/valentinaskakun/metricsService/internal/config"
 	"github.com/valentinaskakun/metricsService/internal/storage"
 
 	"github.com/go-chi/chi/v5"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 //todo: добавить интерфейсы для хэндлеров/метод сет?
@@ -70,7 +74,7 @@ func ListMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig,
 				valueRes := metricsRun.GaugeMetric[metricReq.ID]
 				metricRes.Value = &valueRes
 				if len(useHash) > 0 {
-					metricRes.Hash = config.Hash(fmt.Sprintf("%s:gauge:%f", metricRes.ID, metricRes.Value), useHash)
+					metricRes.Hash = config.Hash(fmt.Sprintf("%s:gauge:%f", metricRes.ID, *metricRes.Value), useHash)
 				}
 			} else {
 				w.WriteHeader(http.StatusNotFound)
@@ -145,7 +149,7 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 			w.WriteHeader(http.StatusBadRequest)
 		}
 		if metricReq.MType == "gauge" {
-			if (len(useHash) > 0) && (metricReq.Hash != config.Hash(fmt.Sprintf("%s:gauge:%f", metricReq.ID, metricReq.Value), useHash)) {
+			if (len(useHash) > 0) && (metricReq.Hash != config.Hash(fmt.Sprintf("%s:gauge:%f", metricReq.ID, *metricReq.Value), useHash)) {
 				w.WriteHeader(http.StatusBadRequest)
 			} else {
 				metricsRun.MuGauge.Lock()
@@ -167,5 +171,25 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 		w.WriteHeader(http.StatusOK)
 		resBody, _ := json.Marshal("{}")
 		w.Write(resBody)
+	}
+}
+func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if saveConfig.ToDatabase {
+			db, err := sql.Open("pos",
+				"db.db")
+			if err != nil {
+				panic(err)
+			}
+			defer db.Close()
+			// работаем с базой
+			// ...
+			// можем продиагностировать соединение
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			defer cancel()
+			if err = db.PingContext(ctx); err != nil {
+				panic(err)
+			}
+		}
 	}
 }
