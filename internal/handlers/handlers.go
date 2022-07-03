@@ -14,7 +14,7 @@ import (
 	"github.com/valentinaskakun/metricsService/internal/storage"
 
 	"github.com/go-chi/chi/v5"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/jackc/pgx"
 )
 
 //todo: добавить интерфейсы для хэндлеров/метод сет?
