@@ -9,12 +9,13 @@ import (
 )
 
 type SaveConfig struct {
-	ToMem        bool
-	MetricsInMem Metrics
-	ToFile       bool
-	ToFilePath   string
-	ToFileSync   bool
-	ToDatabase   bool
+	ToMem         bool
+	MetricsInMem  Metrics
+	ToFile        bool
+	ToFilePath    string
+	ToFileSync    bool
+	ToDatabase    bool
+	ToDatabaseDSN string
 }
 
 type MetricsJSON struct {

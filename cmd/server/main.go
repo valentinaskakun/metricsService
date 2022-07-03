@@ -46,6 +46,10 @@ func main() {
 		saveConfigRun.ToFile = true
 		saveConfigRun.ToFilePath = configRun.StoreFile
 	}
+	if configRun.Database != "" {
+		saveConfigRun.ToDatabase = true
+		saveConfigRun.ToDatabaseDSN = configRun.Database
+	}
 	if configRun.StoreInterval == "0" {
 		saveConfigRun.ToFileSync = true
 	}
@@ -77,5 +81,6 @@ func main() {
 		r.Post("/", handlers.ListMetricJSON(&metricsRun, &saveConfigRun, configRun.Key))
 		r.Get("/{metricType}/{metricName}", handlers.ListMetric(&metricsRun, &saveConfigRun))
 	})
+	r.Get("/ping", handlers.Ping(&saveConfigRun))
 	log.Fatal(http.ListenAndServe(configRun.Address, compress.GzipHandle(r)))
 }

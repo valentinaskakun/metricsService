@@ -176,19 +176,18 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if saveConfig.ToDatabase {
-			db, err := sql.Open("pos",
-				"db.db")
+			db, err := sql.Open("postgres",
+				saveConfig.ToDatabaseDSN)
 			if err != nil {
 				panic(err)
 			}
 			defer db.Close()
-			// работаем с базой
-			// ...
-			// можем продиагностировать соединение
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 			if err = db.PingContext(ctx); err != nil {
-				panic(err)
+				w.WriteHeader(http.StatusInternalServerError)
+			} else {
+				w.WriteHeader(http.StatusOK)
 			}
 		}
 	}
