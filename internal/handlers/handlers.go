@@ -176,10 +176,9 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if saveConfig.ToDatabase {
-			db, err := sql.Open("postgres",
-				saveConfig.ToDatabaseDSN)
+			db, err := sql.Open("pgx", saveConfig.ToDatabaseDSN)
 			if err != nil {
-				panic(err)
+				w.WriteHeader(http.StatusInternalServerError)
 			}
 			defer db.Close()
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
