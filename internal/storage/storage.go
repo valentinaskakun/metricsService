@@ -77,15 +77,15 @@ func (m *Metrics) SaveToFile(filePath string) {
 	fileAttr := os.O_CREATE | os.O_TRUNC | os.O_WRONLY
 	file, err := os.OpenFile(filePath, fileAttr, 0644)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	data, err := json.Marshal(&m)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	_, err = file.Write(data)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	err = file.Close()
 	if err != nil {
