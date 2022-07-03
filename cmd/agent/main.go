@@ -102,12 +102,8 @@ func sendPOST(urlString string) {
 }
 
 //todo: переделать использование url server path
-<<<<<<< HEAD
 //todo: добавить использование configRun-полей
 func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, configRun *config.ConfAgent) {
-=======
-func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string) {
->>>>>>> b98348e5dd4422ed0ca183164d6020297ad88c8a
 	if metricsToSend.CounterMetric["PollCount"] != 0 {
 		urlStr, _ := url.Parse(serverToSendLink)
 		urlStr.Path = path.Join(urlStr.Path, "update")
@@ -120,7 +116,6 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string) {
 				fmt.Println(err)
 				return
 			}
-<<<<<<< HEAD
 			if len(configRun.Key) > 0 {
 				hashValue, err := config.Hash(fmt.Sprintf("%s:gauge:%f", key, value), configRun.Key)
 				fmt.Println(hashValue)
@@ -134,8 +129,6 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string) {
 					return
 				}
 			}
-=======
->>>>>>> b98348e5dd4422ed0ca183164d6020297ad88c8a
 			_, err = client.R().
 				SetBody(metricToSend).
 				Post(urlStr.String())
