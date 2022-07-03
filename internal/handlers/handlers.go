@@ -175,6 +175,7 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 }
 func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println(saveConfig)
 		if saveConfig.ToDatabase {
 			//todo: вынести логику бд в storage.go
 			db, err := sql.Open("pgx", saveConfig.ToDatabaseDSN)
