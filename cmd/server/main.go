@@ -70,11 +70,11 @@ func main() {
 	r := chi.NewRouter()
 	r.Get("/", handlers.ListMetricsAll(&metricsRun, &saveConfigRun))
 	r.Route("/update", func(r chi.Router) {
-		r.Post("/", handlers.UpdateMetricJSON(&metricsRun, &saveConfigRun))
+		r.Post("/", handlers.UpdateMetricJSON(&metricsRun, &saveConfigRun, configRun.Key))
 		r.Post("/{metricType}/{metricName}/{metricValue}", handlers.UpdateMetric(&metricsRun, &saveConfigRun))
 	})
 	r.Route("/value", func(r chi.Router) {
-		r.Post("/", handlers.ListMetricJSON(&metricsRun, &saveConfigRun))
+		r.Post("/", handlers.ListMetricJSON(&metricsRun, &saveConfigRun, configRun.Key))
 		r.Get("/{metricType}/{metricName}", handlers.ListMetric(&metricsRun, &saveConfigRun))
 	})
 	log.Fatal(http.ListenAndServe(configRun.Address, compress.GzipHandle(r)))

@@ -117,6 +117,7 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, con
 				return
 			}
 			if len(configRun.Key) > 0 {
+				//todo: переделать функцию хэш с нормальными аргументами
 				hashValue := config.Hash(fmt.Sprintf("%s:gauge:%f", key, value), configRun.Key)
 				fmt.Println(hashValue)
 				metricToSend, err = json.Marshal(storage.MetricsJSON{ID: key, MType: "gauge", Value: &value, Hash: hashValue})

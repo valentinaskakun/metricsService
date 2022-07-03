@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"flag"
+	"fmt"
 	"log"
 
 	"github.com/caarlos0/env/v6"
@@ -57,5 +58,7 @@ func Hash(msg string, key string) (hash string) {
 	h := hmac.New(sha256.New, []byte(key))
 	h.Write(src)
 	hash = hex.EncodeToString(h.Sum(nil))
+	fmt.Println("Hash. msg " + msg + "key " + key)
+	fmt.Println("Hash. " + hash)
 	return
 }

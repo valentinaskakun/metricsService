@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/valentinaskakun/metricsService/internal/config"
 	"github.com/valentinaskakun/metricsService/internal/storage"
 
 	"github.com/go-chi/chi/v5"
@@ -51,7 +52,7 @@ func ListMetric(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) fun
 	}
 }
 
-func ListMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
+func ListMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig, useHash string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricsRun.GetMetrics(saveConfig)
 		w.Header().Set("Content-Type", "application/json")
@@ -68,6 +69,9 @@ func ListMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig)
 				metricRes.ID, metricRes.MType, metricRes.Delta = metricReq.ID, metricReq.MType, metricReq.Delta
 				valueRes := metricsRun.GaugeMetric[metricReq.ID]
 				metricRes.Value = &valueRes
+				if len(useHash) > 0 {
+					metricRes.Hash = config.Hash(fmt.Sprintf("%s:gauge:%f", metricRes.ID, metricRes.Value), useHash)
+				}
 			} else {
 				w.WriteHeader(http.StatusNotFound)
 				return
@@ -77,6 +81,9 @@ func ListMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig)
 				metricRes.ID, metricRes.MType, metricRes.Value = metricReq.ID, metricReq.MType, metricReq.Value
 				valueRes := metricsRun.CounterMetric[metricReq.ID]
 				metricRes.Delta = &valueRes
+				if len(useHash) > 0 {
+					metricRes.Hash = config.Hash(fmt.Sprintf("%s:counter:%d", metricRes.ID, metricRes.Delta), useHash)
+				}
 			} else {
 				w.WriteHeader(http.StatusNotFound)
 				return
@@ -126,7 +133,7 @@ func UpdateMetric(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) f
 	}
 }
 
-func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
+func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig, useHash string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricsRun.GetMetrics(saveConfig)
 		metricReq := storage.MetricsJSON{}
@@ -138,13 +145,21 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 			w.WriteHeader(http.StatusBadRequest)
 		}
 		if metricReq.MType == "gauge" {
-			metricsRun.MuGauge.Lock()
-			metricsRun.GaugeMetric[metricReq.ID] = *metricReq.Value
-			metricsRun.MuGauge.Unlock()
+			if (len(useHash) > 0) && (metricReq.Hash != config.Hash(fmt.Sprintf("%s:gauge:%f", metricReq.ID, metricReq.Value), useHash)) {
+				w.WriteHeader(http.StatusBadRequest)
+			} else {
+				metricsRun.MuGauge.Lock()
+				metricsRun.GaugeMetric[metricReq.ID] = *metricReq.Value
+				metricsRun.MuGauge.Unlock()
+			}
 		} else if metricReq.MType == "counter" {
-			metricsRun.MuCounter.Lock()
-			metricsRun.CounterMetric[metricReq.ID] += *metricReq.Delta
-			metricsRun.MuCounter.Unlock()
+			if (len(useHash) > 0) && (metricReq.Hash != config.Hash(fmt.Sprintf("%s:counter:%d", metricReq.ID, metricReq.Delta), useHash)) {
+				w.WriteHeader(http.StatusBadRequest)
+			} else {
+				metricsRun.MuCounter.Lock()
+				metricsRun.CounterMetric[metricReq.ID] += *metricReq.Delta
+				metricsRun.MuCounter.Unlock()
+			}
 		} else {
 			w.WriteHeader(http.StatusNotImplemented)
 		}
