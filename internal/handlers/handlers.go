@@ -176,18 +176,21 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if saveConfig.ToDatabase {
+			//todo: вынести логику бд в storage.go
 			db, err := sql.Open("pgx", saveConfig.ToDatabaseDSN)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-			}
-			defer db.Close()
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-			defer cancel()
-			if err = db.PingContext(ctx); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
 			} else {
-				w.WriteHeader(http.StatusOK)
+				defer db.Close()
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				if err = db.PingContext(ctx); err == nil {
+					w.WriteHeader(http.StatusOK)
+					w.Write([]byte("StatusOK"))
+				}
 			}
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
 }
