@@ -139,6 +139,16 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, con
 				fmt.Println(err)
 				return
 			}
+			if len(configRun.Key) > 0 {
+				hashValue := config.Hash(fmt.Sprintf("%s:counter:%d", key, value), configRun.Key)
+				fmt.Printf("%s:counter:%d", key, value)
+				fmt.Println("config run Key "+configRun.Key, "hash "+hashValue)
+				metricToSend, err = json.Marshal(storage.MetricsJSON{ID: key, MType: "counter", Delta: &value, Hash: hashValue})
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+			}
 			_, err = client.R().
 				SetBody(metricToSend).
 				Post(urlStr.String())
