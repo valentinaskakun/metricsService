@@ -181,16 +181,20 @@ func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Re
 			db, err := sql.Open("pgx", saveConfig.ToDatabaseDSN)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Println("sqlOpen")
 			} else {
 				defer db.Close()
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
 				if err = db.PingContext(ctx); err == nil {
+					fmt.Println("PingContextOK")
 					w.WriteHeader(http.StatusOK)
 					w.Write([]byte("StatusOK"))
 				}
 			}
 		} else {
+			fmt.Println("else")
+			fmt.Println(saveConfig.ToDatabase)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
