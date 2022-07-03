@@ -86,7 +86,7 @@ func ListMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig,
 				valueRes := metricsRun.CounterMetric[metricReq.ID]
 				metricRes.Delta = &valueRes
 				if len(useHash) > 0 {
-					metricRes.Hash = config.Hash(fmt.Sprintf("%s:counter:%d", metricRes.ID, metricRes.Delta), useHash)
+					metricRes.Hash = config.Hash(fmt.Sprintf("%s:counter:%d", metricRes.ID, *metricRes.Delta), useHash)
 				}
 			} else {
 				w.WriteHeader(http.StatusNotFound)
@@ -157,7 +157,7 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 				metricsRun.MuGauge.Unlock()
 			}
 		} else if metricReq.MType == "counter" {
-			if (len(useHash) > 0) && (metricReq.Hash != config.Hash(fmt.Sprintf("%s:counter:%d", metricReq.ID, metricReq.Delta), useHash)) {
+			if (len(useHash) > 0) && (metricReq.Hash != config.Hash(fmt.Sprintf("%s:counter:%d", metricReq.ID, *metricReq.Delta), useHash)) {
 				w.WriteHeader(http.StatusBadRequest)
 			} else {
 				metricsRun.MuCounter.Lock()
