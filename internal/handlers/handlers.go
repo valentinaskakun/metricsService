@@ -182,6 +182,7 @@ func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Re
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				fmt.Println("sqlOpen")
+				fmt.Println(err)
 			} else {
 				defer db.Close()
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
