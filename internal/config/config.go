@@ -15,7 +15,7 @@ type ConfServer struct {
 	StoreInterval string `env:"STORE_INTERVAL"`
 	StoreFile     string `env:"STORE_FILE"`
 	Key           string `env:"KEY"`
-	Database      string `env:"DATABASE_DSN "`
+	Database      string `env:"DATABASE_DSN"`
 	Restore       bool   `env:"RESTORE"`
 }
 
