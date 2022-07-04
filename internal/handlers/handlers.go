@@ -177,6 +177,7 @@ func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Re
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(saveConfig)
 		//saveConfig.ToDatabase = true
+		//saveConfig.ToDatabaseDSN = "postgres://postgres:postgrespw2@localhost:55000"
 		if saveConfig.ToDatabase {
 			//todo: вынести логику бд в storage.go
 			db, err := sql.Open("pgx", saveConfig.ToDatabaseDSN)
@@ -192,12 +193,13 @@ func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Re
 					fmt.Println("err ping", err)
 				} else {
 					w.WriteHeader(http.StatusOK)
+					fmt.Println("im connected")
 				}
 			}
 			// to err log
 			fmt.Println("err", err)
 		} else {
-			w.WriteHeader(http.StatusOK)
+			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintln(w, "Database DSN isn't set")
 		}
 	}
