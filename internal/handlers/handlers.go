@@ -1,18 +1,20 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/valentinaskakun/metricsService/internal/config"
 	"github.com/valentinaskakun/metricsService/internal/storage"
 
 	"github.com/go-chi/chi/v5"
-	_ "github.com/jackc/pgx"
+	_ "github.com/jackc/pgx/stdlib"
 )
 
 //todo: добавить интерфейсы для хэндлеров/метод сет?
@@ -174,6 +176,7 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(saveConfig)
+		//saveConfig.ToDatabase = true
 		if saveConfig.ToDatabase {
 			//todo: вынести логику бд в storage.go
 			db, err := sql.Open("pgx", saveConfig.ToDatabaseDSN)
@@ -181,8 +184,21 @@ func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Re
 				w.WriteHeader(http.StatusInternalServerError)
 			} else {
 				defer db.Close()
-				w.WriteHeader(http.StatusOK)
+				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+				defer cancel()
+				if err = db.PingContext(ctx); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					// to err log
+					fmt.Println("err ping", err)
+				} else {
+					w.WriteHeader(http.StatusOK)
+				}
 			}
+			// to err log
+			fmt.Println("err", err)
+		} else {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintln(w, "Database DSN isn't set")
 		}
 	}
 }
