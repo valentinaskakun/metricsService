@@ -1,14 +1,12 @@
 package handlers
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/valentinaskakun/metricsService/internal/config"
 	"github.com/valentinaskakun/metricsService/internal/storage"
@@ -181,22 +179,10 @@ func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Re
 			db, err := sql.Open("pgx", saveConfig.ToDatabaseDSN)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Println("sqlOpen")
-				fmt.Println(err)
 			} else {
 				defer db.Close()
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				defer cancel()
-				if err = db.PingContext(ctx); err == nil {
-					fmt.Println("PingContextOK")
-					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("StatusOK"))
-				}
+				w.WriteHeader(http.StatusOK)
 			}
-		} else {
-			fmt.Println("else")
-			fmt.Println(saveConfig.ToDatabase)
-			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
 }
