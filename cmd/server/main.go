@@ -36,7 +36,7 @@ func main() {
 	var metricsRun storage.Metrics
 	metricsRun.InitMetrics()
 	//парс конфига
-	//todo: перенести в config?
+	//todo: перенести в config? (в т.ч. inittables)
 	var saveConfigRun storage.SaveConfig
 	configRun, _ := config.LoadConfigServer()
 	saveConfigRun.ToMem = true
@@ -58,7 +58,12 @@ func main() {
 		//todo: добавить ошибки на случай отсутствия файла
 		metricsRun.RestoreFromFile(configRun.StoreFile)
 	}
-
+	if saveConfigRun.ToDatabase {
+		err := storage.InitTables(&saveConfigRun)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
 	//если не нужно поддерживать синхронность, создаем тикер, только почему так криво
 	if !saveConfigRun.ToFileSync {
 		storeInterval, _ := time.ParseDuration(configRun.StoreInterval)
