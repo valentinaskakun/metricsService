@@ -176,8 +176,9 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 	}
 }
 
-func UpdateMetrics(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
+func UpdateMetrics(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		metricsRun.GetMetrics(saveConfig)
 		var metricsBatch []storage.MetricsJSON
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -186,8 +187,20 @@ func UpdateMetrics(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r
 		if err := json.Unmarshal(body, &metricsBatch); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 		}
+		for _, metricReq := range metricsBatch {
+			if metricReq.MType == "gauge" {
+				metricsRun.MuGauge.Lock()
+				metricsRun.GaugeMetric[metricReq.ID] = *metricReq.Value
+				metricsRun.MuGauge.Unlock()
+			} else if metricReq.MType == "counter" {
+				metricsRun.MuCounter.Lock()
+				metricsRun.CounterMetric[metricReq.ID] += *metricReq.Delta
+				metricsRun.MuCounter.Unlock()
+			}
+		}
 		fmt.Println("json", string(body))
 		fmt.Println("metricsBatch", &metricsBatch, err)
+		metricsRun.SaveMetrics(saveConfig)
 		err = storage.UpdateBatch(saveConfig, metricsBatch)
 		if err != nil {
 			fmt.Println(err)

@@ -185,7 +185,7 @@ func sendMetricsBatch(metricsToSend *storage.Metrics, serverToSendLink string) {
 				fmt.Println(err)
 				return
 			}
-			fmt.Println("prepared", metricsPrepared)
+			//fmt.Println("prepared", metricsPrepared)
 			_, err = client.R().
 				SetBody(metricsPrepared).
 				Post(urlStr.String())
