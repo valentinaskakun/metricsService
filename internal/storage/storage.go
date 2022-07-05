@@ -151,7 +151,6 @@ CREATE TABLE IF NOT EXISTS metrics (
 }
 
 func UpdateRow(config *SaveConfig, metricsJSON *MetricsJSON) (err error) {
-	log := zerolog.New(os.Stdout)
 	sqlQuery := `INSERT INTO metrics(
 					id,
 					mtype,
@@ -169,18 +168,14 @@ func UpdateRow(config *SaveConfig, metricsJSON *MetricsJSON) (err error) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		defer cancel()
 		_, err = db.ExecContext(ctx, sqlQuery, metricsJSON.ID, metricsJSON.MType, metricsJSON.Delta, metricsJSON.Value)
-		//_, err = db.NamedExec(sqlQuery, metricsJSON)
 		if err != nil {
 			return err
-			// to err log
-			log.Warn().Msg(err.Error())
 		}
 	}
 	return
 }
 
 func UpdateBatch(config *SaveConfig, metricsBatch []MetricsJSON) (err error) {
-	log := zerolog.New(os.Stdout)
 	sqlQuery := `INSERT INTO metrics (id,
 				mtype,
 				delta,
@@ -190,7 +185,6 @@ func UpdateBatch(config *SaveConfig, metricsBatch []MetricsJSON) (err error) {
 	db, err := sql.Open("pgx", config.ToDatabaseDSN)
 	if err != nil {
 		return err
-		log.Warn().Msg(err.Error())
 	} else {
 		defer db.Close()
 		txn, err := db.Begin()
@@ -198,18 +192,15 @@ func UpdateBatch(config *SaveConfig, metricsBatch []MetricsJSON) (err error) {
 			return errors.Wrap(err, "could not start a new transaction")
 		}
 		for _, metric := range metricsBatch {
-			//fmt.Println("metrics", metric)
 			_, err = txn.Exec(sqlQuery, metric.ID, metric.MType, metric.Delta, metric.Value)
 			if err != nil {
 				txn.Rollback()
-				return errors.Wrap(err, "failed to insert multiple records at once")
-				log.Warn().Msg(err.Error())
+				return errors.Wrap(err, "failed to insert multiple records at once"
 			}
 		}
 		if err := txn.Commit(); err != nil {
 			return errors.Wrap(err, "failed to commit transaction")
-			log.Warn().Msg(err.Error())
 		}
 	}
-	return err
+	return
 }
