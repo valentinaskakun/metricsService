@@ -168,20 +168,26 @@ func sendMetricsBatch(metricsToSend *storage.Metrics, serverToSendLink string) {
 		client.R().
 			SetHeader("Content-Type", "Content-Type: application/json")
 		for key, value := range metricsToSend.GaugeMetric {
-			metricToSend := storage.MetricsJSON{ID: key, MType: "gauge", Value: &value}
-			fmt.Println("key val", key, value)
-			fmt.Println("")
+			newVal := value
+			metricToSend := storage.MetricsJSON{ID: key, MType: "gauge", Value: &newVal}
 			metricsBatch = append(metricsBatch, metricToSend)
-			fmt.Println("metricsBAtch", &metricsBatch)
 		}
 		for key, value := range metricsToSend.CounterMetric {
-			metricToSend := storage.MetricsJSON{ID: key, MType: "counter", Delta: &value}
+			newVal := value
+			metricToSend := storage.MetricsJSON{ID: key, MType: "counter", Delta: &newVal}
 			metricsBatch = append(metricsBatch, metricToSend)
-			fmt.Println("metricsBAtch", &metricsBatch)
 		}
+
+		fmt.Println(metricsBatch)
 		if len(metricsBatch) > 0 {
-			_, err := client.R().
-				SetBody(metricsBatch).
+			metricsPrepared, err := json.Marshal(metricsBatch)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			fmt.Println("prepared", metricsPrepared)
+			_, err = client.R().
+				SetBody(metricsPrepared).
 				Post(urlStr.String())
 			if err != nil {
 				log.Default()
@@ -228,7 +234,7 @@ func main() {
 	go func() {
 		for range tickerReport.C {
 			//todo: убрать второй аргумент
-			//sendMetricJSON(&MetricsCurrent, serverToSendProto+configRun.Address, &configRun)
+			sendMetricJSON(&MetricsCurrent, serverToSendProto+configRun.Address, &configRun)
 			sendMetricsBatch(&MetricsCurrent, serverToSendProto+configRun.Address)
 			MetricsCurrent.MuCounter.Lock()
 			MetricsCurrent.CounterMetric = updateCounterMetrics("init", MetricsCurrent.CounterMetric)

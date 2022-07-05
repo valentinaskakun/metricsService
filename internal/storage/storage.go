@@ -177,7 +177,7 @@ func UpdateRow(config *SaveConfig, metricsJSON *MetricsJSON) (err error) {
 	return
 }
 
-func UpdateBatch(config *SaveConfig, metricsBatch []*MetricsJSON) (err error) {
+func UpdateBatch(config *SaveConfig, metricsBatch []MetricsJSON) (err error) {
 	sqlQuery := `INSERT INTO metrics (id,
 				mtype,
 				delta,
@@ -193,6 +193,7 @@ func UpdateBatch(config *SaveConfig, metricsBatch []*MetricsJSON) (err error) {
 		if err != nil {
 			return errors.Wrap(err, "could not start a new transaction")
 		}
+		fmt.Println("storage ", metricsBatch)
 		for _, metric := range metricsBatch {
 			//fmt.Println("metrics", metric)
 			_, err = txn.Exec(sqlQuery, metric.ID, metric.MType, metric.Delta, metric.Value)

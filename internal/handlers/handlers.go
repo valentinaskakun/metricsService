@@ -178,7 +178,7 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 
 func UpdateMetrics(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var metricsBatch []*storage.MetricsJSON
+		var metricsBatch []storage.MetricsJSON
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -186,7 +186,8 @@ func UpdateMetrics(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r
 		if err := json.Unmarshal(body, &metricsBatch); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 		}
-		//fmt.Println("metricsBatch", body, &metricsBatch, err)
+		fmt.Println("json", string(body))
+		fmt.Println("metricsBatch", &metricsBatch, err)
 		err = storage.UpdateBatch(saveConfig, metricsBatch)
 		if err != nil {
 			fmt.Println(err)

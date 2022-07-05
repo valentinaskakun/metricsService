@@ -64,11 +64,7 @@ func main() {
 			fmt.Println(err)
 		}
 	}
-	///////TEST
-	saveConfigRun.ToDatabase = true
-	saveConfigRun.ToDatabaseDSN = "postgres://postgres:postgrespw@localhost:55000"
-	storage.InitTables(&saveConfigRun)
-	///////TEST
+
 	//если не нужно поддерживать синхронность, создаем тикер, только почему так криво
 	if !saveConfigRun.ToFileSync {
 		storeInterval, _ := time.ParseDuration(configRun.StoreInterval)
