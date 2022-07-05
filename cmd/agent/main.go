@@ -177,18 +177,15 @@ func sendMetricsBatch(metricsToSend *storage.Metrics, serverToSendLink string) {
 			metricToSend := storage.MetricsJSON{ID: key, MType: "counter", Delta: &newVal}
 			metricsBatch = append(metricsBatch, metricToSend)
 		}
-
-		fmt.Println(metricsBatch)
 		if len(metricsBatch) > 0 {
 			metricsPrepared, err := json.Marshal(metricsBatch)
 			if err != nil {
 				fmt.Println(err)
 				return
 			}
-			//fmt.Println("prepared", metricsPrepared)
 			_, err = client.R().
 				SetBody(metricsPrepared).
-				Post(urlStr.String())
+				Post(urlStr.String() + "/")
 			if err != nil {
 				log.Default()
 				return
@@ -233,7 +230,7 @@ func main() {
 	}()
 	go func() {
 		for range tickerReport.C {
-			//todo: убрать второй аргумент
+			//todo: оставить только config
 			sendMetricJSON(&MetricsCurrent, serverToSendProto+configRun.Address, &configRun)
 			sendMetricsBatch(&MetricsCurrent, serverToSendProto+configRun.Address)
 			MetricsCurrent.MuCounter.Lock()

@@ -35,13 +35,6 @@ func GzipHandle(next http.Handler) http.Handler {
 			return
 		}
 		//todo: добавить ограничения по типу файлов и размеру (?проверить по тестам)
-		//contentToZip := map[string]bool{"application/javascript": true, "application/json": true, "text/css": true, "text/html": true, "text/plain": true, "text/xml": true}
-		//if _, ok := contentToZip[r.Header.Get("Content-Type")]; !ok {
-		//	next.ServeHTTP(w, r)
-		//	return
-		//}
-		// body, err := io.ReadAll(gz) len(body)
-		// создаём gzip.Writer поверх текущего w
 		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
 			io.WriteString(w, err.Error())
@@ -49,7 +42,6 @@ func GzipHandle(next http.Handler) http.Handler {
 		}
 		//todo: как отказаться от постоянного вызова gzip.NewWriterLevel и использовать метод gzip.Reset, чтобы избежать выделения памяти при каждом запросе.
 		defer gz.Close()
-
 		w.Header().Set("Content-Encoding", "gzip")
 		// передаём обработчику страницы переменную типа gzipWriter для вывода данных
 		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)

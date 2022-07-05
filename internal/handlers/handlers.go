@@ -166,9 +166,12 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 		}
 		metricsRun.SaveMetrics(saveConfig)
 		//какой-то непонятный костыль, только для 11-го инкремента?
-		err = storage.UpdateRow(saveConfig, &metricReq)
-		if err != nil {
-			fmt.Println(err)
+		if saveConfig.ToDatabase {
+			err = storage.UpdateRow(saveConfig, &metricReq)
+
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 		w.WriteHeader(http.StatusOK)
 		resBody, _ := json.Marshal("{}")
@@ -184,11 +187,10 @@ func UpdateMetrics(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) 
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 		}
-		fmt.Println("updateMetrics body", string(body))
 		if err := json.Unmarshal(body, &metricsBatch); err != nil {
-			fmt.Println("unmarshal updatemetrics error", err)
 			w.WriteHeader(http.StatusBadRequest)
 		}
+		//todo: переделать на интерфейс хранения
 		for _, metricReq := range metricsBatch {
 			if metricReq.MType == "gauge" {
 				metricsRun.MuGauge.Lock()
@@ -200,12 +202,12 @@ func UpdateMetrics(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) 
 				metricsRun.MuCounter.Unlock()
 			}
 		}
-		fmt.Println("json", string(body))
-		fmt.Println("metricsBatch", &metricsBatch, err)
 		metricsRun.SaveMetrics(saveConfig)
-		err = storage.UpdateBatch(saveConfig, metricsBatch)
-		if err != nil {
-			fmt.Println(err)
+		if saveConfig.ToDatabase {
+			err = storage.UpdateBatch(saveConfig, metricsBatch)
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 
 	}
