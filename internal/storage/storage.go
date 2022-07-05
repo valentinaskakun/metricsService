@@ -195,7 +195,7 @@ func UpdateBatch(config *SaveConfig, metricsBatch []MetricsJSON) (err error) {
 			_, err = txn.Exec(sqlQuery, metric.ID, metric.MType, metric.Delta, metric.Value)
 			if err != nil {
 				txn.Rollback()
-				return errors.Wrap(err, "failed to insert multiple records at once"
+				return errors.Wrap(err, "failed to insert multiple records at once")
 			}
 		}
 		if err := txn.Commit(); err != nil {
