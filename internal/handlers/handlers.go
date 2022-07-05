@@ -1,14 +1,11 @@
 package handlers
 
 import (
-	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/valentinaskakun/metricsService/internal/config"
 	"github.com/valentinaskakun/metricsService/internal/storage"
@@ -168,6 +165,11 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 			w.WriteHeader(http.StatusNotImplemented)
 		}
 		metricsRun.SaveMetrics(saveConfig)
+		//какой-то непонятный костыль, только для 11-го инкремента?
+		err = storage.UpdateRow(saveConfig, metricReq)
+		if err != nil {
+			fmt.Println(err)
+		}
 		w.WriteHeader(http.StatusOK)
 		resBody, _ := json.Marshal("{}")
 		w.Write(resBody)
@@ -175,29 +177,18 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 }
 func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println(saveConfig)
 		//saveConfig.ToDatabase = true
 		//saveConfig.ToDatabaseDSN = "postgres://postgres:postgrespw2@localhost:55000"
 		if saveConfig.ToDatabase {
 			//todo: вынести логику бд в storage.go
-			db, err := sql.Open("pgx", saveConfig.ToDatabaseDSN)
+			err := storage.PingDatabase(saveConfig)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
+				// to err log
+				fmt.Println("err", err)
 			} else {
-				defer db.Close()
-				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-				defer cancel()
-				if err = db.PingContext(ctx); err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					// to err log
-					fmt.Println("err ping", err)
-				} else {
-					w.WriteHeader(http.StatusOK)
-					fmt.Println("im connected")
-				}
+				w.WriteHeader(http.StatusOK)
 			}
-			// to err log
-			fmt.Println("err", err)
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintln(w, "Database DSN isn't set")

@@ -1,11 +1,16 @@
 package storage
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"io/ioutil"
 	"log"
 	"os"
 	"sync"
+	"time"
+
+	_ "github.com/jackc/pgx/stdlib"
 )
 
 type SaveConfig struct {
@@ -96,4 +101,86 @@ func (m *Metrics) SaveToFile(filePath string) {
 func (m *Metrics) RestoreFromFile(filePath string) {
 	byteFile, _ := ioutil.ReadFile(filePath)
 	_ = json.Unmarshal(byteFile, m)
+}
+
+func PingDatabase(config *SaveConfig) (err error) {
+	db, err := sql.Open("pgx", config.ToDatabaseDSN)
+	if err != nil {
+		return err
+	} else {
+		defer db.Close()
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		if err = db.PingContext(ctx); err != nil {
+			return err
+			// to err log
+			//fmt.Println("err ping", err)
+		}
+	}
+	return
+}
+
+func InitTables(config *SaveConfig) (err error) {
+	//как-то надо покрасивее сделать, через структуру видимо
+	metricsTable := `
+CREATE TABLE IF NOT EXISTS metrics (
+  id           TEXT UNIQUE,
+  mtype 	  TEXT,
+  delta		   BIGINT,
+  value        DOUBLE PRECISION
+);`
+	db, err := sql.Open("pgx", config.ToDatabaseDSN)
+	if err != nil {
+		return err
+	} else {
+		defer db.Close()
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		_, err := db.ExecContext(ctx, metricsTable)
+		if err != nil {
+			return err
+			// to err log
+			//fmt.Println("err ping", err)
+		}
+	}
+	return
+}
+
+func UpdateRow(config *SaveConfig, metricsJSON MetricsJSON) (err error) {
+	sqlQuery := ""
+	//if metricsJSON.MType == "gauge" {
+	//	sqlQuery = `INSERT INTO metrics(
+	//				id,
+	//				type,
+	//				value
+	//				)
+	//				VALUES($1, $2, $3)
+	//				ON CONFLICT (id) DO UPDATE
+	//				SET value=$3;`
+	//} else if metricsJSON.MType == "counter" {
+	sqlQuery = `INSERT INTO metrics(
+					id,
+					mtype,
+					delta,
+					value
+					)
+					VALUES($1, $2, $3, $4)
+					ON CONFLICT (id) DO UPDATE
+					SET delta=metrics.delta+$3, value=$4;`
+	db, err := sql.Open("pgx", config.ToDatabaseDSN)
+	if err != nil {
+		return err
+	} else {
+		defer db.Close()
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		_, err = db.ExecContext(ctx, sqlQuery, metricsJSON.ID, metricsJSON.MType, metricsJSON.Delta, metricsJSON.Value)
+		//_, err = db.NamedExec(sqlQuery, metricsJSON)
+		if err != nil {
+			return err
+			// to err log
+			//fmt.Println("err ping", err)
+		}
+	}
+	return
 }

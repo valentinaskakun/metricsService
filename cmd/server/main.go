@@ -36,6 +36,7 @@ func main() {
 	var metricsRun storage.Metrics
 	metricsRun.InitMetrics()
 	//парс конфига
+	//todo: перенести в config?
 	var saveConfigRun storage.SaveConfig
 	configRun, _ := config.LoadConfigServer()
 	saveConfigRun.ToMem = true
@@ -57,6 +58,12 @@ func main() {
 		//todo: добавить ошибки на случай отсутствия файла
 		metricsRun.RestoreFromFile(configRun.StoreFile)
 	}
+	///////TEST
+	saveConfigRun.ToDatabase = true
+	saveConfigRun.ToDatabaseDSN = "postgres://postgres:postgrespw@localhost:55000"
+	err := storage.InitTables(&saveConfigRun)
+	fmt.Println(err)
+	///////TEST
 	//если не нужно поддерживать синхронность, создаем тикер, только почему так криво
 	if !saveConfigRun.ToFileSync {
 		storeInterval, _ := time.ParseDuration(configRun.StoreInterval)
