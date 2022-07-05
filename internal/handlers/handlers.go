@@ -166,7 +166,7 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 		}
 		metricsRun.SaveMetrics(saveConfig)
 		//какой-то непонятный костыль, только для 11-го инкремента?
-		err = storage.UpdateRow(saveConfig, metricReq)
+		err = storage.UpdateRow(saveConfig, &metricReq)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -175,6 +175,26 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 		w.Write(resBody)
 	}
 }
+
+func UpdateMetrics(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var metricsBatch []*storage.MetricsJSON
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		if err := json.Unmarshal(body, &metricsBatch); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		//fmt.Println("metricsBatch", body, &metricsBatch, err)
+		err = storage.UpdateBatch(saveConfig, metricsBatch)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+	}
+}
+
 func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		//saveConfig.ToDatabase = true

@@ -64,6 +64,11 @@ func main() {
 			fmt.Println(err)
 		}
 	}
+	///////TEST
+	saveConfigRun.ToDatabase = true
+	saveConfigRun.ToDatabaseDSN = "postgres://postgres:postgrespw@localhost:55000"
+	storage.InitTables(&saveConfigRun)
+	///////TEST
 	//если не нужно поддерживать синхронность, создаем тикер, только почему так криво
 	if !saveConfigRun.ToFileSync {
 		storeInterval, _ := time.ParseDuration(configRun.StoreInterval)
@@ -84,6 +89,7 @@ func main() {
 		r.Post("/", handlers.UpdateMetricJSON(&metricsRun, &saveConfigRun, configRun.Key))
 		r.Post("/{metricType}/{metricName}/{metricValue}", handlers.UpdateMetric(&metricsRun, &saveConfigRun))
 	})
+	r.Post("/updates", handlers.UpdateMetrics(&saveConfigRun))
 	r.Route("/value", func(r chi.Router) {
 		r.Post("/", handlers.ListMetricJSON(&metricsRun, &saveConfigRun, configRun.Key))
 		r.Get("/{metricType}/{metricName}", handlers.ListMetric(&metricsRun, &saveConfigRun))

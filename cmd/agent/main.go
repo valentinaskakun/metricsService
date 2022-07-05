@@ -102,7 +102,7 @@ func sendPOST(urlString string) {
 }
 
 //todo: переделать использование url server path
-//todo: добавить использование configRun-полей
+//todo: добавить использование configRun-полей, вот этого монстра перенести из мэйна
 func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, configRun *config.ConfAgent) {
 	if metricsToSend.CounterMetric["PollCount"] != 0 {
 		urlStr, _ := url.Parse(serverToSendLink)
@@ -159,6 +159,42 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, con
 		fmt.Println("ERROR: Something went wrong while sendingMetricJSON")
 	}
 }
+func sendMetricsBatch(metricsToSend *storage.Metrics, serverToSendLink string) {
+	var metricsBatch []storage.MetricsJSON
+	if metricsToSend.CounterMetric["PollCount"] != 0 {
+		urlStr, _ := url.Parse(serverToSendLink)
+		urlStr.Path = path.Join(urlStr.Path, "updates")
+		client := resty.New()
+		client.R().
+			SetHeader("Content-Type", "Content-Type: application/json")
+		for key, value := range metricsToSend.GaugeMetric {
+			metricToSend := storage.MetricsJSON{ID: key, MType: "gauge", Value: &value}
+			fmt.Println("key val", key, value)
+			fmt.Println("")
+			metricsBatch = append(metricsBatch, metricToSend)
+			fmt.Println("metricsBAtch", &metricsBatch)
+		}
+		for key, value := range metricsToSend.CounterMetric {
+			metricToSend := storage.MetricsJSON{ID: key, MType: "counter", Delta: &value}
+			metricsBatch = append(metricsBatch, metricToSend)
+			fmt.Println("metricsBAtch", &metricsBatch)
+		}
+		if len(metricsBatch) > 0 {
+			_, err := client.R().
+				SetBody(metricsBatch).
+				Post(urlStr.String())
+			if err != nil {
+				log.Default()
+				return
+			}
+		} else {
+			return
+		}
+
+	} else {
+		fmt.Println("ERROR: Something went wrong while sendingMetricJSON")
+	}
+}
 func handleSignal(signal os.Signal) {
 	fmt.Println("* Got:", signal)
 	os.Exit(-1)
@@ -192,7 +228,8 @@ func main() {
 	go func() {
 		for range tickerReport.C {
 			//todo: убрать второй аргумент
-			sendMetricJSON(&MetricsCurrent, serverToSendProto+configRun.Address, &configRun)
+			//sendMetricJSON(&MetricsCurrent, serverToSendProto+configRun.Address, &configRun)
+			sendMetricsBatch(&MetricsCurrent, serverToSendProto+configRun.Address)
 			MetricsCurrent.MuCounter.Lock()
 			MetricsCurrent.CounterMetric = updateCounterMetrics("init", MetricsCurrent.CounterMetric)
 			MetricsCurrent.MuCounter.Unlock()
