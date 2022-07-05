@@ -85,7 +85,7 @@ func main() {
 		r.Post("/", handlers.UpdateMetricJSON(&metricsRun, &saveConfigRun, configRun.Key))
 		r.Post("/{metricType}/{metricName}/{metricValue}", handlers.UpdateMetric(&metricsRun, &saveConfigRun))
 	})
-	r.Post("/updates", handlers.UpdateMetrics(&metricsRun, &saveConfigRun))
+	r.Post("/updates/", handlers.UpdateMetrics(&metricsRun, &saveConfigRun))
 	r.Route("/value", func(r chi.Router) {
 		r.Post("/", handlers.ListMetricJSON(&metricsRun, &saveConfigRun, configRun.Key))
 		r.Get("/{metricType}/{metricName}", handlers.ListMetric(&metricsRun, &saveConfigRun))
