@@ -184,7 +184,9 @@ func UpdateMetrics(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) 
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 		}
+		fmt.Println("updateMetrics body", string(body))
 		if err := json.Unmarshal(body, &metricsBatch); err != nil {
+			fmt.Println("unmarshal updatemetrics error", err)
 			w.WriteHeader(http.StatusBadRequest)
 		}
 		for _, metricReq := range metricsBatch {
