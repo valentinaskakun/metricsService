@@ -3,15 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/url"
 	"os"
 	"os/signal"
 	"path"
-	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/rs/zerolog"
 
 	"github.com/valentinaskakun/metricsService/internal/config"
 	"github.com/valentinaskakun/metricsService/internal/metricsruntime"
@@ -68,42 +68,10 @@ func updateCounterMetrics(action string, metricsCounterToUpdate map[string]int64
 	return metricsCounterUpdated
 }
 
-func sendMetrics(metricsToSend *storage.Metrics, serverToSendLink string) {
-	if metricsToSend.CounterMetric["PollCount"] != 0 {
-		for key, value := range metricsToSend.GaugeMetric {
-			urlStr, err := url.Parse(serverToSendLink)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			urlStr.Path = path.Join(urlStr.Path, "update", "gauge", key, fmt.Sprintf("%f", value))
-			sendPOST(urlStr.String())
-		}
-		for key, value := range metricsToSend.CounterMetric {
-			urlStr, err := url.Parse(serverToSendLink)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			urlStr.Path = path.Join(urlStr.Path, "update", "counter", key, strconv.FormatInt(value, 10))
-			sendPOST(urlStr.String())
-		}
-	}
-}
-func sendPOST(urlString string) {
-	client := resty.New()
-	_, err := client.R().
-		SetHeader("Content-Type", "Content-Type: text/plain").
-		Post(urlString)
-	if err != nil {
-		fmt.Println("ERROR POST " + urlString)
-		return
-	}
-}
-
 //todo: переделать использование url server path
 //todo: добавить использование configRun-полей, вот этого монстра перенести из мэйна
 func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, configRun *config.ConfAgent) {
+	log := zerolog.New(os.Stdout)
 	if metricsToSend.CounterMetric["PollCount"] != 0 {
 		urlStr, _ := url.Parse(serverToSendLink)
 		urlStr.Path = path.Join(urlStr.Path, "update")
@@ -113,7 +81,7 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, con
 		for key, value := range metricsToSend.GaugeMetric {
 			metricToSend, err := json.Marshal(storage.MetricsJSON{ID: key, MType: "gauge", Value: &value})
 			if err != nil {
-				fmt.Println(err)
+				log.Warn().Msg(err.Error())
 				return
 			}
 			if len(configRun.Key) > 0 {
@@ -121,7 +89,7 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, con
 				hashValue := config.Hash(fmt.Sprintf("%s:gauge:%f", key, value), configRun.Key)
 				metricToSend, err = json.Marshal(storage.MetricsJSON{ID: key, MType: "gauge", Value: &value, Hash: hashValue})
 				if err != nil {
-					fmt.Println(err)
+					log.Warn().Msg(err.Error())
 					return
 				}
 			}
@@ -129,21 +97,21 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, con
 				SetBody(metricToSend).
 				Post(urlStr.String())
 			if err != nil {
-				log.Default()
+				log.Warn().Msg(err.Error())
 				return
 			}
 		}
 		for key, value := range metricsToSend.CounterMetric {
 			metricToSend, err := json.Marshal(storage.MetricsJSON{ID: key, MType: "counter", Delta: &value})
 			if err != nil {
-				fmt.Println(err)
+				log.Warn().Msg(err.Error())
 				return
 			}
 			if len(configRun.Key) > 0 {
 				hashValue := config.Hash(fmt.Sprintf("%s:counter:%d", key, value), configRun.Key)
 				metricToSend, err = json.Marshal(storage.MetricsJSON{ID: key, MType: "counter", Delta: &value, Hash: hashValue})
 				if err != nil {
-					fmt.Println(err)
+					log.Warn().Msg(err.Error())
 					return
 				}
 			}
@@ -151,7 +119,7 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, con
 				SetBody(metricToSend).
 				Post(urlStr.String())
 			if err != nil {
-				log.Default()
+				log.Warn().Msg(err.Error())
 				return
 			}
 		}
@@ -160,6 +128,7 @@ func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, con
 	}
 }
 func sendMetricsBatch(metricsToSend *storage.Metrics, serverToSendLink string) {
+	log := zerolog.New(os.Stdout)
 	var metricsBatch []storage.MetricsJSON
 	if metricsToSend.CounterMetric["PollCount"] != 0 {
 		urlStr, _ := url.Parse(serverToSendLink)
@@ -180,14 +149,14 @@ func sendMetricsBatch(metricsToSend *storage.Metrics, serverToSendLink string) {
 		if len(metricsBatch) > 0 {
 			metricsPrepared, err := json.Marshal(metricsBatch)
 			if err != nil {
-				fmt.Println(err)
+				log.Warn().Msg(err.Error())
 				return
 			}
 			_, err = client.R().
 				SetBody(metricsPrepared).
 				Post(urlStr.String() + "/")
 			if err != nil {
-				log.Default()
+				log.Warn().Msg(err.Error())
 				return
 			}
 		} else {
@@ -195,7 +164,7 @@ func sendMetricsBatch(metricsToSend *storage.Metrics, serverToSendLink string) {
 		}
 
 	} else {
-		fmt.Println("ERROR: Something went wrong while sendingMetricJSON")
+		log.Info().Msg("ERROR: Something went wrong while sendingMetricJSON")
 	}
 }
 func handleSignal(signal os.Signal) {

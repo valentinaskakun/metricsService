@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
+
+	"github.com/rs/zerolog"
 
 	"github.com/valentinaskakun/metricsService/internal/config"
 	"github.com/valentinaskakun/metricsService/internal/storage"
@@ -55,14 +58,17 @@ func ListMetric(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) fun
 
 func ListMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig, useHash string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log := zerolog.New(os.Stdout)
 		metricsRun.GetMetrics(saveConfig)
 		w.Header().Set("Content-Type", "application/json")
 		metricReq, metricRes := storage.MetricsJSON{}, storage.MetricsJSON{}
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
+			log.Warn().Msg(err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 		}
 		if err := json.Unmarshal(body, &metricReq); err != nil {
+			log.Warn().Msg(err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 		}
 		if metricReq.MType == "gauge" {
@@ -105,6 +111,7 @@ func ListMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig,
 
 func UpdateMetric(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log := zerolog.New(os.Stdout)
 		metricsRun.GetMetrics(saveConfig)
 		metricType := chi.URLParam(r, "metricType")
 		metricName := chi.URLParam(r, "metricName")
@@ -112,6 +119,7 @@ func UpdateMetric(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) f
 		if metricType == "gauge" {
 			valParsed, err := strconv.ParseFloat(metricValue, 64)
 			if err != nil {
+				log.Warn().Msg(err.Error())
 				w.WriteHeader(http.StatusBadRequest)
 			} else {
 				metricsRun.MuGauge.Lock()
@@ -121,6 +129,7 @@ func UpdateMetric(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) f
 		} else if metricType == "counter" {
 			valParsed, err := strconv.ParseInt(metricValue, 10, 64)
 			if err != nil {
+				log.Warn().Msg(err.Error())
 				w.WriteHeader(http.StatusBadRequest)
 			} else {
 				metricsRun.MuCounter.Lock()
@@ -136,13 +145,16 @@ func UpdateMetric(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) f
 
 func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig, useHash string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log := zerolog.New(os.Stdout)
 		metricsRun.GetMetrics(saveConfig)
 		metricReq := storage.MetricsJSON{}
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
+			log.Warn().Msg(err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 		}
 		if err := json.Unmarshal(body, &metricReq); err != nil {
+			log.Warn().Msg(err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 		}
 		if metricReq.MType == "gauge" {
@@ -168,9 +180,8 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 		//какой-то непонятный костыль, только для 11-го инкремента?
 		if saveConfig.ToDatabase {
 			err = storage.UpdateRow(saveConfig, &metricReq)
-
 			if err != nil {
-				fmt.Println(err)
+				log.Warn().Msg(err.Error())
 			}
 		}
 		w.WriteHeader(http.StatusOK)
@@ -181,13 +192,16 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 
 func UpdateMetrics(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log := zerolog.New(os.Stdout)
 		metricsRun.GetMetrics(saveConfig)
 		var metricsBatch []storage.MetricsJSON
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
+			log.Warn().Msg(err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 		}
 		if err := json.Unmarshal(body, &metricsBatch); err != nil {
+			log.Warn().Msg(err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 		}
 		//todo: переделать на интерфейс хранения
@@ -206,10 +220,9 @@ func UpdateMetrics(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) 
 		if saveConfig.ToDatabase {
 			err = storage.UpdateBatch(saveConfig, metricsBatch)
 			if err != nil {
-				fmt.Println(err)
+				log.Warn().Msg(err.Error())
 			}
 		}
-
 	}
 }
 

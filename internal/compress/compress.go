@@ -4,7 +4,10 @@ import (
 	"compress/gzip"
 	"io"
 	"net/http"
+	"os"
 	"strings"
+
+	"github.com/rs/zerolog"
 )
 
 type gzipWriter struct {
@@ -18,10 +21,12 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 }
 func GzipHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log := zerolog.New(os.Stdout)
 		if r.Header.Get(`Content-Encoding`) == `gzip` {
 			gz, err := gzip.NewReader(r.Body)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				log.Warn().Msg(err.Error())
 				return
 			}
 			defer gz.Close()
@@ -37,7 +42,7 @@ func GzipHandle(next http.Handler) http.Handler {
 		//todo: добавить ограничения по типу файлов и размеру (?проверить по тестам)
 		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
-			io.WriteString(w, err.Error())
+			log.Warn().Msg(err.Error())
 			return
 		}
 		//todo: как отказаться от постоянного вызова gzip.NewWriterLevel и использовать метод gzip.Reset, чтобы избежать выделения памяти при каждом запросе.

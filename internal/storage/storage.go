@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 type SaveConfig struct {
@@ -106,6 +107,7 @@ func (m *Metrics) RestoreFromFile(filePath string) {
 }
 
 func PingDatabase(config *SaveConfig) (err error) {
+	log := zerolog.New(os.Stdout)
 	db, err := sql.Open("pgx", config.ToDatabaseDSN)
 	if err != nil {
 		return err
@@ -114,15 +116,15 @@ func PingDatabase(config *SaveConfig) (err error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 		if err = db.PingContext(ctx); err != nil {
+			log.Warn().Msg(err.Error())
 			return err
-			// to err log
-			//fmt.Println("err ping", err)
 		}
 	}
 	return
 }
 
 func InitTables(config *SaveConfig) (err error) {
+	log := zerolog.New(os.Stdout)
 	//как-то надо покрасивее сделать, через структуру видимо
 	metricsTable := `
 CREATE TABLE IF NOT EXISTS metrics (
@@ -133,6 +135,7 @@ CREATE TABLE IF NOT EXISTS metrics (
 );`
 	db, err := sql.Open("pgx", config.ToDatabaseDSN)
 	if err != nil {
+		log.Warn().Msg(err.Error())
 		return err
 	} else {
 		defer db.Close()
@@ -140,15 +143,15 @@ CREATE TABLE IF NOT EXISTS metrics (
 		defer cancel()
 		_, err := db.ExecContext(ctx, metricsTable)
 		if err != nil {
+			log.Warn().Msg(err.Error())
 			return err
-			// to err log
-			//fmt.Println("err ping", err)
 		}
 	}
 	return
 }
 
 func UpdateRow(config *SaveConfig, metricsJSON *MetricsJSON) (err error) {
+	log := zerolog.New(os.Stdout)
 	sqlQuery := `INSERT INTO metrics(
 					id,
 					mtype,
@@ -170,13 +173,14 @@ func UpdateRow(config *SaveConfig, metricsJSON *MetricsJSON) (err error) {
 		if err != nil {
 			return err
 			// to err log
-			//fmt.Println("err ping", err)
+			log.Warn().Msg(err.Error())
 		}
 	}
 	return
 }
 
 func UpdateBatch(config *SaveConfig, metricsBatch []MetricsJSON) (err error) {
+	log := zerolog.New(os.Stdout)
 	sqlQuery := `INSERT INTO metrics (id,
 				mtype,
 				delta,
@@ -186,6 +190,7 @@ func UpdateBatch(config *SaveConfig, metricsBatch []MetricsJSON) (err error) {
 	db, err := sql.Open("pgx", config.ToDatabaseDSN)
 	if err != nil {
 		return err
+		log.Warn().Msg(err.Error())
 	} else {
 		defer db.Close()
 		txn, err := db.Begin()
@@ -198,55 +203,13 @@ func UpdateBatch(config *SaveConfig, metricsBatch []MetricsJSON) (err error) {
 			if err != nil {
 				txn.Rollback()
 				return errors.Wrap(err, "failed to insert multiple records at once")
+				log.Warn().Msg(err.Error())
 			}
 		}
 		if err := txn.Commit(); err != nil {
 			return errors.Wrap(err, "failed to commit transaction")
+			log.Warn().Msg(err.Error())
 		}
 	}
 	return err
-}
-
-type MetricsArr []MetricsJSON
-
-func (ma MetricsArr) splitInGroups(metricSize int) []MetricsArr {
-	if len(ma) <= metricSize {
-		return []MetricsArr{ma}
-	}
-	var metricsGroups []MetricsArr
-	for i := 0; i < len(ma); i += metricSize {
-		end := i + metricSize
-		if end > len(ma) {
-			end = len(ma)
-		}
-		metricsGroups = append(metricsGroups, ma[i:end])
-	}
-	return metricsGroups
-}
-func (ma MetricsArr) BulkInsert(db *sql.DB) error {
-	metricsGroups := ma.splitInGroups(20000)
-	sqlQuery := `INSERT INTO metrics (id,
-					mtype,
-					delta,
-					value)
-	   VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE
-					SET delta=metrics.delta+$3, value=$4;`
-	for _, metrics := range metricsGroups {
-		txn, err := db.Begin()
-		if err != nil {
-			return errors.Wrap(err, "could not start a new transaction")
-		}
-		for _, metric := range metrics {
-			_, err = txn.Exec(sqlQuery, metric.ID, metric.MType, metric.Delta, metric.Value)
-			if err != nil {
-				txn.Rollback()
-				return errors.Wrap(err, "failed to insert multiple records at once")
-			}
-		}
-
-		if err := txn.Commit(); err != nil {
-			return errors.Wrap(err, "failed to commit transaction")
-		}
-	}
-	return nil
 }

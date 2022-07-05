@@ -5,9 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"flag"
-	"log"
+	"os"
 
 	"github.com/caarlos0/env/v6"
+	"github.com/rs/zerolog"
 )
 
 type ConfServer struct {
@@ -20,6 +21,7 @@ type ConfServer struct {
 }
 
 func LoadConfigServer() (config ConfServer, err error) {
+	log := zerolog.New(os.Stdout)
 	flag.StringVar(&config.Address, "a", ":8080", "")
 	flag.StringVar(&config.StoreInterval, "i", "300s", "")
 	flag.StringVar(&config.StoreFile, "f", "/tmp/devops-metrics-db.json", "")
@@ -29,7 +31,7 @@ func LoadConfigServer() (config ConfServer, err error) {
 	flag.Parse()
 	err = env.Parse(&config)
 	if err != nil {
-		log.Fatal(err)
+		log.Warn().Msg(err.Error())
 	}
 	return
 }
@@ -42,6 +44,7 @@ type ConfAgent struct {
 }
 
 func LoadConfigAgent() (config ConfAgent, err error) {
+	log := zerolog.New(os.Stdout)
 	flag.StringVar(&config.Address, "a", "localhost:8080", "")
 	flag.StringVar(&config.ReportInterval, "r", "10s", "")
 	flag.StringVar(&config.PollInterval, "p", "2s", "")
@@ -49,7 +52,7 @@ func LoadConfigAgent() (config ConfAgent, err error) {
 	flag.Parse()
 	err = env.Parse(&config)
 	if err != nil {
-		log.Fatal(err)
+		log.Warn().Msg(err.Error())
 	}
 	return
 }
