@@ -34,24 +34,24 @@ var serverToSendProto = "http://"
 
 //todo: добавить обработку ошибок
 //todo: закинуть все в модуль datamanipulation
-func updateGaugeMetricsRuntime() (metricsGaugeUpdated map[string]float64) {
-	metricsGaugeUpdated = make(map[string]float64)
+func updateGaugeMetricsRuntime(metricsRun *storage.Metrics) {
+	//metricsGaugeUpdated = make(map[string]float64)
 	tempCurrentMemStatsMetrics := metricscollect.GetCurrentValuesRuntimeGauge()
 	for key, value := range tempCurrentMemStatsMetrics {
 		if _, ok := metricsListConfig[key]; ok {
-			metricsGaugeUpdated[key] = value
+			metricsRun.GaugeMetric[key] = value
 		}
 	}
-	metricsGaugeUpdated["RandomValue"] = rand.Float64()
-	return metricsGaugeUpdated
+	metricsRun.GaugeMetric["RandomValue"] = rand.Float64()
+	//return metricsGaugeUpdated
 }
-func updateGaugeMetricsCPU() (metricsGaugeUpdated map[string]float64) {
-	metricsGaugeUpdated = make(map[string]float64)
+func updateGaugeMetricsCPU(metricsRun *storage.Metrics) {
+	//metricsGaugeUpdated = make(map[string]float64)
 	tempCurrentCPUStatsMetrics := metricscollect.GetCurrentValuesGOpsGauge()
 	for key, value := range tempCurrentCPUStatsMetrics {
-		metricsGaugeUpdated[key] = value
+		metricsRun.GaugeMetric[key] = value
 	}
-	return metricsGaugeUpdated
+	//return metricsGaugeUpdated
 }
 func updateCounterMetrics(action string, metricsCounterToUpdate map[string]int64) (metricsCounterUpdated map[string]int64) {
 	metricsCounterUpdated = make(map[string]int64)
@@ -195,12 +195,13 @@ func main() {
 			handleSignal(sig)
 		}
 	}()
+	MetricsCurrent.InitMetrics()
 	//todo добавить WG
 	go func() {
 		for range tickerPoll.C {
 			go func() {
 				MetricsCurrent.MuGauge.Lock()
-				MetricsCurrent.GaugeMetric = updateGaugeMetricsRuntime()
+				updateGaugeMetricsRuntime(&MetricsCurrent)
 				MetricsCurrent.MuGauge.Unlock()
 				MetricsCurrent.MuCounter.Lock()
 				//todo: переделать add по-человечески
@@ -209,7 +210,8 @@ func main() {
 			}()
 			go func() {
 				MetricsCurrent.MuGauge.Lock()
-				MetricsCurrent.GaugeMetric = updateGaugeMetricsCPU()
+				updateGaugeMetricsCPU(&MetricsCurrent)
+				fmt.Println(MetricsCurrent.GaugeMetric)
 				MetricsCurrent.MuGauge.Unlock()
 			}()
 		}
