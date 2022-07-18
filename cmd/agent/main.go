@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/valentinaskakun/metricsService/internal/config"
-	"github.com/valentinaskakun/metricsService/internal/metricsruntime"
+	"github.com/valentinaskakun/metricsService/internal/metricscollect"
 	"github.com/valentinaskakun/metricsService/internal/storage"
 
 	"github.com/go-resty/resty/v2"
@@ -28,7 +28,7 @@ const (
 
 //var pollInterval time.Duration = pollIntervalConst     //Milliseconds
 //var reportInterval time.Duration = reportIntervalConst //Milliseconds
-var metricsListConfig = map[string]bool{"Alloc": true, "BuckHashSys": true, "Frees": true, "GCCPUFraction": true, "GCSys": true, "HeapAlloc": true, "HeapIdle": true, "HeapInuse": true, "HeapObjects": true, "HeapReleased": true, "HeapSys": true, "LastGC": true, "Lookups": true, "MCacheInuse": true, "MCacheSys": true, "MSpanInuse": true, "MSpanSys": true, "Mallocs": true, "NextGC": true, "NumForcedGC": true, "NumGC": true, "OtherSys": true, "PauseTotalNs": true, "StackInuse": true, "StackSys": true, "Sys": true, "TotalAlloc": true, "PollCount": true}
+var metricsListConfig = map[string]bool{"TotalMemory": true, "FreeMemory": true, "CPUutilization1": true, "Alloc": true, "BuckHashSys": true, "Frees": true, "GCCPUFraction": true, "GCSys": true, "HeapAlloc": true, "HeapIdle": true, "HeapInuse": true, "HeapObjects": true, "HeapReleased": true, "HeapSys": true, "LastGC": true, "Lookups": true, "MCacheInuse": true, "MCacheSys": true, "MSpanInuse": true, "MSpanSys": true, "Mallocs": true, "NextGC": true, "NumForcedGC": true, "NumGC": true, "OtherSys": true, "PauseTotalNs": true, "StackInuse": true, "StackSys": true, "Sys": true, "TotalAlloc": true, "PollCount": true}
 var MetricsCurrent storage.Metrics
 var serverToSendProto = "http://"
 
@@ -36,8 +36,14 @@ var serverToSendProto = "http://"
 //todo: закинуть все в модуль datamanipulation
 func updateGaugeMetrics() (metricsGaugeUpdated map[string]float64) {
 	metricsGaugeUpdated = make(map[string]float64)
-	tempCurrentMemStatsMetrics := metricsruntime.GetCurrentValuesRuntimeGauge()
+	tempCurrentMemStatsMetrics := metricscollect.GetCurrentValuesRuntimeGauge()
 	for key, value := range tempCurrentMemStatsMetrics {
+		if _, ok := metricsListConfig[key]; ok {
+			metricsGaugeUpdated[key] = value
+		}
+	}
+	tempCurrentCPUStatsMetrics := metricscollect.GetCurrentValuesGOpsGauge()
+	for key, value := range tempCurrentCPUStatsMetrics {
 		if _, ok := metricsListConfig[key]; ok {
 			metricsGaugeUpdated[key] = value
 		}
@@ -172,6 +178,8 @@ func handleSignal(signal os.Signal) {
 	os.Exit(-1)
 }
 func main() {
+	test := metricscollect.GetCurrentValuesGOpsGauge()
+	fmt.Println(test)
 	configRun, _ := config.LoadConfigAgent()
 	pollInterval, _ := time.ParseDuration(configRun.PollInterval)
 	reportInterval, _ := time.ParseDuration(configRun.ReportInterval)
