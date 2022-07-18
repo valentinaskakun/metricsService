@@ -2,11 +2,20 @@ package main
 
 import (
 	"testing"
+
+	"github.com/valentinaskakun/metricsService/internal/storage"
 )
 
 //todo: дописать тесты для sendMetrics/sendPost (?)
+
 func TestUpdateGaugeMetrics(t *testing.T) {
-	if updateGaugeMetricsRuntime()["RandomValue"] == updateGaugeMetricsRuntime()["RandomValue"] {
+	var metricsCurrent storage.Metrics
+	metricsCurrent.InitMetrics()
+	updateGaugeMetricsRuntime(&metricsCurrent)
+	val1 := metricsCurrent.GaugeMetric["RandomValue"]
+	updateGaugeMetricsRuntime(&metricsCurrent)
+	val2 := metricsCurrent.GaugeMetric["RandomValue"]
+	if val1 == val2 {
 		t.Errorf("RandomValue are equal, does it work?")
 	}
 }
