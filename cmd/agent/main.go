@@ -34,7 +34,7 @@ var serverToSendProto = "http://"
 
 //todo: добавить обработку ошибок
 //todo: закинуть все в модуль datamanipulation
-func updateGaugeMetrics() (metricsGaugeUpdated map[string]float64) {
+func updateGaugeMetricsRuntime() (metricsGaugeUpdated map[string]float64) {
 	metricsGaugeUpdated = make(map[string]float64)
 	tempCurrentMemStatsMetrics := metricscollect.GetCurrentValuesRuntimeGauge()
 	for key, value := range tempCurrentMemStatsMetrics {
@@ -42,13 +42,15 @@ func updateGaugeMetrics() (metricsGaugeUpdated map[string]float64) {
 			metricsGaugeUpdated[key] = value
 		}
 	}
+	metricsGaugeUpdated["RandomValue"] = rand.Float64()
+	return metricsGaugeUpdated
+}
+func updateGaugeMetricsCPU() (metricsGaugeUpdated map[string]float64) {
+	metricsGaugeUpdated = make(map[string]float64)
 	tempCurrentCPUStatsMetrics := metricscollect.GetCurrentValuesGOpsGauge()
 	for key, value := range tempCurrentCPUStatsMetrics {
-		if _, ok := metricsListConfig[key]; ok {
-			metricsGaugeUpdated[key] = value
-		}
+		metricsGaugeUpdated[key] = value
 	}
-	metricsGaugeUpdated["RandomValue"] = rand.Float64()
 	return metricsGaugeUpdated
 }
 func updateCounterMetrics(action string, metricsCounterToUpdate map[string]int64) (metricsCounterUpdated map[string]int64) {
@@ -178,8 +180,8 @@ func handleSignal(signal os.Signal) {
 	os.Exit(-1)
 }
 func main() {
-	test := metricscollect.GetCurrentValuesGOpsGauge()
-	fmt.Println(test)
+	//test := metricscollect.GetCurrentValuesGOpsGauge()
+	//fmt.Println(test)
 	configRun, _ := config.LoadConfigAgent()
 	pollInterval, _ := time.ParseDuration(configRun.PollInterval)
 	reportInterval, _ := time.ParseDuration(configRun.ReportInterval)
@@ -196,13 +198,20 @@ func main() {
 	//todo добавить WG
 	go func() {
 		for range tickerPoll.C {
-			MetricsCurrent.MuGauge.Lock()
-			MetricsCurrent.GaugeMetric = updateGaugeMetrics()
-			MetricsCurrent.MuGauge.Unlock()
-			MetricsCurrent.MuCounter.Lock()
-			//todo: переделать add по-человечески
-			MetricsCurrent.CounterMetric = updateCounterMetrics("add", MetricsCurrent.CounterMetric)
-			MetricsCurrent.MuCounter.Unlock()
+			go func() {
+				MetricsCurrent.MuGauge.Lock()
+				MetricsCurrent.GaugeMetric = updateGaugeMetricsRuntime()
+				MetricsCurrent.MuGauge.Unlock()
+				MetricsCurrent.MuCounter.Lock()
+				//todo: переделать add по-человечески
+				MetricsCurrent.CounterMetric = updateCounterMetrics("add", MetricsCurrent.CounterMetric)
+				MetricsCurrent.MuCounter.Unlock()
+			}()
+			go func() {
+				MetricsCurrent.MuGauge.Lock()
+				MetricsCurrent.GaugeMetric = updateGaugeMetricsCPU()
+				MetricsCurrent.MuGauge.Unlock()
+			}()
 		}
 	}()
 	go func() {

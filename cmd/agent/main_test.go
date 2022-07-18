@@ -6,7 +6,7 @@ import (
 
 //todo: дописать тесты для sendMetrics/sendPost (?)
 func TestUpdateGaugeMetrics(t *testing.T) {
-	if updateGaugeMetrics()["RandomValue"] == updateGaugeMetrics()["RandomValue"] {
+	if updateGaugeMetricsRuntime()["RandomValue"] == updateGaugeMetricsRuntime()["RandomValue"] {
 		t.Errorf("RandomValue are equal, does it work?")
 	}
 }
