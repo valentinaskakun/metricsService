@@ -70,10 +70,12 @@ type ConfAgent struct {
 	ReportInterval string `env:"REPORT_INTERVAL"`
 	PollInterval   string `env:"POLL_INTERVAL"`
 	Key            string `env:"KEY"`
+	Proto          string
 }
 
 func LoadConfigAgent() (config ConfAgent, err error) {
 	log := zerolog.New(os.Stdout)
+	config.Proto = "http://"
 	flag.StringVar(&config.Address, "a", "localhost:8080", "")
 	flag.StringVar(&config.ReportInterval, "r", "10s", "")
 	flag.StringVar(&config.PollInterval, "p", "2s", "")

@@ -17,11 +17,10 @@ import (
 	_ "github.com/jackc/pgx/stdlib"
 )
 
-//todo: добавить интерфейсы для хэндлеров/метод сет?
 func ListMetricsAll(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricsRun.GetMetrics(saveConfig)
-		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, "METRICS GAUGE:")
 		//todo: нужно ли добавлять RLock
 		for key, value := range metricsRun.GaugeMetric {
@@ -228,21 +227,18 @@ func UpdateMetrics(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) 
 
 func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//saveConfig.ToDatabase = true
-		//saveConfig.ToDatabaseDSN = "postgres://postgres:postgrespw2@localhost:55000"
+		log := zerolog.New(os.Stdout)
 		if saveConfig.ToDatabase {
-			//todo: вынести логику бд в storage.go
 			err := storage.PingDatabase(saveConfig)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				// to err log
-				fmt.Println("err", err)
+				log.Print("err", err)
 			} else {
 				w.WriteHeader(http.StatusOK)
 			}
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintln(w, "Database DSN isn't set")
+			log.Print(w, "Database DSN isn't set")
 		}
 	}
 }
