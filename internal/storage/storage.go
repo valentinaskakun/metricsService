@@ -70,7 +70,9 @@ func (m *Metrics) SaveMetrics(saveConfig *SaveConfig) {
 	if saveConfig.ToFile && saveConfig.ToFileSync {
 		log := zerolog.New(os.Stdout)
 		err := m.SaveToFile(saveConfig.ToFilePath)
-		log.Warn().Msg(err.Error())
+		if err != nil {
+			log.Warn().Msg(err.Error())
+		}
 	}
 }
 
@@ -118,9 +120,13 @@ func (m *Metrics) SaveToFile(filePath string) (err error) {
 	}
 	return err
 }
-func (m *Metrics) RestoreFromFile(filePath string) {
-	byteFile, _ := ioutil.ReadFile(filePath)
-	_ = json.Unmarshal(byteFile, m)
+func (m *Metrics) RestoreFromFile(filePath string) (err error) {
+	byteFile, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(byteFile, m)
+	return err
 }
 
 func PingDatabase(config *SaveConfig) (err error) {
@@ -177,18 +183,18 @@ func UpdateRow(config *SaveConfig, metricsJSON *MetricsJSON) (err error) {
 
 func UpdateBatch(config *SaveConfig, metricsBatch []MetricsJSON) (err error) {
 	db, err := sql.Open("pgx", config.ToDatabaseDSN)
-	defer db.Close()
 	if err != nil {
 		return err
 	} else {
+		defer db.Close()
 		txn, err := db.Begin()
 		if err != nil {
 			return errors.Wrap(err, "could not start a new transaction")
 		}
+		defer txn.Rollback()
 		for _, metric := range metricsBatch {
 			_, err = txn.Exec(PostgresDBRun.queryUpdate, metric.ID, metric.MType, metric.Delta, metric.Value)
 			if err != nil {
-				txn.Rollback()
 				return errors.Wrap(err, "failed to insert multiple records at once")
 			}
 		}

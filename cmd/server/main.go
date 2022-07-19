@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -18,7 +17,7 @@ import (
 )
 
 func handleSignal(signal os.Signal) {
-	fmt.Println("* Got:", signal)
+	log.Println("* Got:", signal)
 	os.Exit(-1)
 }
 
@@ -35,61 +34,49 @@ func main() {
 	//инициализировали структуру, в которой работаем с метриками
 	var metricsRun storage.Metrics
 	metricsRun.InitMetrics()
-	//парс конфига
-	//todo: перенести в config? (в т.ч. inittables)
-	var saveConfigRun storage.SaveConfig
-	configRun, _ := config.LoadConfigServer()
-	saveConfigRun.ToMem = true
-	if saveConfigRun.ToMem {
-		saveConfigRun.MetricsInMem.InitMetrics()
+	//инит конфига
+	configRun, err := config.LoadConfigServer()
+	if err != nil {
+		log.Println(err)
 	}
-	if configRun.StoreFile != "" {
-		saveConfigRun.ToFile = true
-		saveConfigRun.ToFilePath = configRun.StoreFile
-	}
-	if configRun.Database != "" {
-		saveConfigRun.ToDatabase = true
-		saveConfigRun.ToDatabaseDSN = configRun.Database
-	}
-	if configRun.StoreInterval == "0" {
-		saveConfigRun.ToFileSync = true
+	saveConfigRun, err := config.ParseConfigServer(&configRun)
+	if err != nil {
+		log.Println(err)
 	}
 	if configRun.Restore {
-		//todo: добавить ошибки на случай отсутствия файла
-		metricsRun.RestoreFromFile(configRun.StoreFile)
-	}
-	if saveConfigRun.ToDatabase {
-		err := storage.InitTables(&saveConfigRun)
+		err = metricsRun.RestoreFromFile(configRun.StoreFile)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
 	}
-
-	//если не нужно поддерживать синхронность, создаем тикер, только почему так криво
+	//если не нужно поддерживать синхронность, создаем тикер -- все равно кривовато
 	if !saveConfigRun.ToFileSync {
 		storeInterval, _ := time.ParseDuration(configRun.StoreInterval)
 		tickerStore := time.NewTicker(storeInterval)
 		{
 			go func() {
 				for range tickerStore.C {
-					metricsRun.GetMetrics(&saveConfigRun)
-					metricsRun.SaveToFile(saveConfigRun.ToFilePath)
+					metricsRun.GetMetrics(saveConfigRun)
+					err := metricsRun.SaveToFile(saveConfigRun.ToFilePath)
+					if err != nil {
+						log.Print(err)
+					}
 				}
 			}()
 		}
 	}
 	//обработка запросов
 	r := chi.NewRouter()
-	r.Get("/", handlers.ListMetricsAll(&metricsRun, &saveConfigRun))
+	r.Get("/", handlers.ListMetricsAll(&metricsRun, saveConfigRun))
 	r.Route("/update", func(r chi.Router) {
-		r.Post("/", handlers.UpdateMetricJSON(&metricsRun, &saveConfigRun, configRun.Key))
-		r.Post("/{metricType}/{metricName}/{metricValue}", handlers.UpdateMetric(&metricsRun, &saveConfigRun))
+		r.Post("/", handlers.UpdateMetricJSON(&metricsRun, saveConfigRun, configRun.Key))
+		r.Post("/{metricType}/{metricName}/{metricValue}", handlers.UpdateMetric(&metricsRun, saveConfigRun))
 	})
-	r.Post("/updates/", handlers.UpdateMetrics(&metricsRun, &saveConfigRun))
+	r.Post("/updates/", handlers.UpdateMetrics(&metricsRun, saveConfigRun))
 	r.Route("/value", func(r chi.Router) {
-		r.Post("/", handlers.ListMetricJSON(&metricsRun, &saveConfigRun, configRun.Key))
-		r.Get("/{metricType}/{metricName}", handlers.ListMetric(&metricsRun, &saveConfigRun))
+		r.Post("/", handlers.ListMetricJSON(&metricsRun, saveConfigRun, configRun.Key))
+		r.Get("/{metricType}/{metricName}", handlers.ListMetric(&metricsRun, saveConfigRun))
 	})
-	r.Get("/ping", handlers.Ping(&saveConfigRun))
+	r.Get("/ping", handlers.Ping(saveConfigRun))
 	log.Fatal(http.ListenAndServe(configRun.Address, compress.GzipHandle(r)))
 }

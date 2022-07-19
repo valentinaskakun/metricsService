@@ -9,6 +9,8 @@ import (
 
 	"github.com/caarlos0/env/v6"
 	"github.com/rs/zerolog"
+
+	"github.com/valentinaskakun/metricsService/internal/storage"
 )
 
 type ConfServer struct {
@@ -34,6 +36,33 @@ func LoadConfigServer() (config ConfServer, err error) {
 		log.Warn().Msg(err.Error())
 	}
 	return
+}
+
+func ParseConfigServer(configIn *ConfServer) (configOut *storage.SaveConfig, err error) {
+	processConfig := storage.SaveConfig{}
+	processConfig.ToMem = true
+	if processConfig.ToMem {
+		processConfig.MetricsInMem.InitMetrics()
+	}
+	if configIn.StoreFile != "" {
+		processConfig.ToFile = true
+		processConfig.ToFilePath = configIn.StoreFile
+	}
+	if configIn.Database != "" {
+		processConfig.ToDatabase = true
+		processConfig.ToDatabaseDSN = configIn.Database
+	}
+	if processConfig.ToDatabase {
+		err := storage.InitTables(&processConfig)
+		if err != nil {
+			return configOut, err
+		}
+	}
+	if configIn.StoreInterval == "0" {
+		processConfig.ToFileSync = true
+	}
+	configOut = &processConfig
+	return configOut, err
 }
 
 type ConfAgent struct {
