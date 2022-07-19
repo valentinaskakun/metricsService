@@ -81,7 +81,11 @@ func updateCounterMetrics(action string, metricsCounterToUpdate map[string]int64
 func sendMetricJSON(metricsToSend *storage.Metrics, serverToSendLink string, configRun *config.ConfAgent) {
 	log := zerolog.New(os.Stdout)
 	if metricsToSend.CounterMetric["PollCount"] != 0 {
-		urlStr, _ := url.Parse(serverToSendLink)
+		urlStr, err := url.Parse(serverToSendLink)
+		if err != nil {
+			log.Warn().Msg(err.Error())
+			return
+		}
 		urlStr.Path = path.Join(urlStr.Path, "update")
 		client := resty.New()
 		client.R().

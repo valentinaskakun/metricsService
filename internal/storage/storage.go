@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"os"
 	"sync"
 	"time"
@@ -40,20 +39,38 @@ type Metrics struct {
 	CounterMetric map[string]int64 `json:"counterMetric"`
 }
 
+type PostgresDB struct {
+	queryInit   string
+	queryUpdate string
+}
+
+var PostgresDBRun = PostgresDB{
+	queryInit: `CREATE TABLE IF NOT EXISTS metrics (
+				  id           TEXT UNIQUE,
+				  mtype 	  TEXT,
+				  delta		   BIGINT,
+				  value        DOUBLE PRECISION);`,
+	queryUpdate: `INSERT INTO metrics(
+					id,	mtype, delta, value
+					)
+					VALUES($1, $2, $3, $4)
+					ON CONFLICT (id) DO UPDATE
+					SET delta=metrics.delta+$3, value=$4;`,
+}
+
 func (m *Metrics) InitMetrics() {
-	//todo: разобраться с инициализацией
 	m.GaugeMetric = make(map[string]float64)
 	m.CounterMetric = make(map[string]int64)
 }
 
 func (m *Metrics) SaveMetrics(saveConfig *SaveConfig) {
-	//по идее, это должно работать с батчами
 	if saveConfig.ToMem {
 		m.SaveMetricsToMem(&saveConfig.MetricsInMem)
 	}
 	if saveConfig.ToFile && saveConfig.ToFileSync {
-		//todo: добавить обработку ошибок
-		m.SaveToFile(saveConfig.ToFilePath)
+		log := zerolog.New(os.Stdout)
+		err := m.SaveToFile(saveConfig.ToFilePath)
+		log.Warn().Msg(err.Error())
 	}
 }
 
@@ -61,7 +78,6 @@ func (m *Metrics) GetMetrics(saveConfig *SaveConfig) {
 	m.GetMetricsFromMem(&saveConfig.MetricsInMem)
 }
 
-//todo: добавить сохранение метрик по имени?
 func (m *Metrics) SaveMetricsToMem(metricsInMem *Metrics) {
 	metricsInMem.MuGauge.Lock()
 	metricsInMem.GaugeMetric = m.GaugeMetric
@@ -82,24 +98,25 @@ func (m *Metrics) GetMetricsFromMem(metricsInMem *Metrics) {
 		metricsInMem.MuCounter.Unlock()
 	}
 }
-func (m *Metrics) SaveToFile(filePath string) {
+func (m *Metrics) SaveToFile(filePath string) (err error) {
 	fileAttr := os.O_CREATE | os.O_TRUNC | os.O_WRONLY
 	file, err := os.OpenFile(filePath, fileAttr, 0644)
 	if err != nil {
-		log.Println(err)
+		return err
 	}
 	data, err := json.Marshal(&m)
 	if err != nil {
-		log.Println(err)
+		return err
 	}
 	_, err = file.Write(data)
 	if err != nil {
-		log.Println(err)
+		return err
 	}
 	err = file.Close()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return err
 }
 func (m *Metrics) RestoreFromFile(filePath string) {
 	byteFile, _ := ioutil.ReadFile(filePath)
@@ -125,14 +142,6 @@ func PingDatabase(config *SaveConfig) (err error) {
 
 func InitTables(config *SaveConfig) (err error) {
 	log := zerolog.New(os.Stdout)
-	//как-то надо покрасивее сделать, через структуру видимо
-	metricsTable := `
-CREATE TABLE IF NOT EXISTS metrics (
-  id           TEXT UNIQUE,
-  mtype 	  TEXT,
-  delta		   BIGINT,
-  value        DOUBLE PRECISION
-);`
 	db, err := sql.Open("pgx", config.ToDatabaseDSN)
 	if err != nil {
 		log.Warn().Msg(err.Error())
@@ -141,7 +150,7 @@ CREATE TABLE IF NOT EXISTS metrics (
 		defer db.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
-		_, err := db.ExecContext(ctx, metricsTable)
+		_, err := db.ExecContext(ctx, PostgresDBRun.queryInit)
 		if err != nil {
 			log.Warn().Msg(err.Error())
 			return err
@@ -151,15 +160,6 @@ CREATE TABLE IF NOT EXISTS metrics (
 }
 
 func UpdateRow(config *SaveConfig, metricsJSON *MetricsJSON) (err error) {
-	sqlQuery := `INSERT INTO metrics(
-					id,
-					mtype,
-					delta,
-					value
-					)
-					VALUES($1, $2, $3, $4)
-					ON CONFLICT (id) DO UPDATE
-					SET delta=metrics.delta+$3, value=$4;`
 	db, err := sql.Open("pgx", config.ToDatabaseDSN)
 	if err != nil {
 		return err
@@ -167,7 +167,7 @@ func UpdateRow(config *SaveConfig, metricsJSON *MetricsJSON) (err error) {
 		defer db.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		defer cancel()
-		_, err = db.ExecContext(ctx, sqlQuery, metricsJSON.ID, metricsJSON.MType, metricsJSON.Delta, metricsJSON.Value)
+		_, err = db.ExecContext(ctx, PostgresDBRun.queryUpdate, metricsJSON.ID, metricsJSON.MType, metricsJSON.Delta, metricsJSON.Value)
 		if err != nil {
 			return err
 		}
@@ -176,23 +176,17 @@ func UpdateRow(config *SaveConfig, metricsJSON *MetricsJSON) (err error) {
 }
 
 func UpdateBatch(config *SaveConfig, metricsBatch []MetricsJSON) (err error) {
-	sqlQuery := `INSERT INTO metrics (id,
-				mtype,
-				delta,
-				value)
-	VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE
-				SET delta=metrics.delta+$3, value=$4;`
 	db, err := sql.Open("pgx", config.ToDatabaseDSN)
+	defer db.Close()
 	if err != nil {
 		return err
 	} else {
-		defer db.Close()
 		txn, err := db.Begin()
 		if err != nil {
 			return errors.Wrap(err, "could not start a new transaction")
 		}
 		for _, metric := range metricsBatch {
-			_, err = txn.Exec(sqlQuery, metric.ID, metric.MType, metric.Delta, metric.Value)
+			_, err = txn.Exec(PostgresDBRun.queryUpdate, metric.ID, metric.MType, metric.Delta, metric.Value)
 			if err != nil {
 				txn.Rollback()
 				return errors.Wrap(err, "failed to insert multiple records at once")
