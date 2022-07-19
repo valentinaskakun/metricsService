@@ -20,11 +20,11 @@ import (
 func ListMetricsAll(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricsRun.GetMetrics(saveConfig)
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprintln(w, "METRICS GAUGE:")
 		//todo: нужно ли добавлять RLock
 		for key, value := range metricsRun.GaugeMetric {
-			fmt.Fprintln(w, key, value)
+			fmt.Fprintf(w, "[%s] %f \n", key, value)
 		}
 		fmt.Fprintln(w, "METRICS COUNTER:")
 		for key, value := range metricsRun.CounterMetric {

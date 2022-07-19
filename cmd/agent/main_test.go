@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/valentinaskakun/metricsService/internal/metricsupdate"
 	"github.com/valentinaskakun/metricsService/internal/storage"
 )
 
@@ -11,9 +12,9 @@ import (
 func TestUpdateGaugeMetrics(t *testing.T) {
 	var metricsCurrent storage.Metrics
 	metricsCurrent.InitMetrics()
-	updateGaugeMetricsRuntime(&metricsCurrent)
+	metricsupdate.UpdateGaugeMetricsRuntime(&metricsCurrent)
 	val1 := metricsCurrent.GaugeMetric["RandomValue"]
-	updateGaugeMetricsRuntime(&metricsCurrent)
+	metricsupdate.UpdateGaugeMetricsRuntime(&metricsCurrent)
 	val2 := metricsCurrent.GaugeMetric["RandomValue"]
 	if val1 == val2 {
 		t.Errorf("RandomValue are equal, does it work?")
@@ -21,10 +22,10 @@ func TestUpdateGaugeMetrics(t *testing.T) {
 }
 func TestUpdateCounterMetrics(t *testing.T) {
 	test := map[string]int64{"PollCount": 6}
-	if updateCounterMetrics("add", test)["PollCount"] != 7 {
+	if metricsupdate.UpdateCounterMetrics("add", test)["PollCount"] != 7 {
 		t.Errorf("PollCount didn't incr")
 	}
-	if updateCounterMetrics("init", test)["PollCount"] != 0 {
+	if metricsupdate.UpdateCounterMetrics("init", test)["PollCount"] != 0 {
 		t.Errorf("PollCount didn't init")
 	}
 }
