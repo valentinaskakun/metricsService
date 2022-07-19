@@ -184,7 +184,10 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 			}
 		}
 		w.WriteHeader(http.StatusOK)
-		resBody, _ := json.Marshal("{}")
+		resBody, err := json.Marshal("{}")
+		if err != nil {
+			log.Warn().Msg(err.Error())
+		}
 		w.Write(resBody)
 	}
 }

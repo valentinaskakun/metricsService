@@ -51,7 +51,10 @@ func main() {
 	}
 	//если не нужно поддерживать синхронность, создаем тикер -- все равно кривовато
 	if !saveConfigRun.ToFileSync {
-		storeInterval, _ := time.ParseDuration(configRun.StoreInterval)
+		storeInterval, err := time.ParseDuration(configRun.StoreInterval)
+		if err != nil {
+			log.Println(err)
+		}
 		tickerStore := time.NewTicker(storeInterval)
 		{
 			go func() {

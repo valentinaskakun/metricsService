@@ -79,7 +79,10 @@ func SendMetricsBatch(metricsToSend *storage.Metrics, serverToSendLink string) {
 	log := zerolog.New(os.Stdout)
 	var metricsBatch []storage.MetricsJSON
 	if metricsToSend.CounterMetric["PollCount"] != 0 {
-		urlStr, _ := url.Parse(serverToSendLink)
+		urlStr, err := url.Parse(serverToSendLink)
+		if err != nil {
+			log.Warn().Msg(err.Error())
+		}
 		urlStr.Path = path.Join(urlStr.Path, "updates")
 		client := resty.New()
 		client.R().

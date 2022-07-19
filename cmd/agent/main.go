@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -26,9 +27,18 @@ func handleSignal(signal os.Signal) {
 	os.Exit(-1)
 }
 func main() {
-	configRun, _ := config.LoadConfigAgent()
-	pollInterval, _ := time.ParseDuration(configRun.PollInterval)
-	reportInterval, _ := time.ParseDuration(configRun.ReportInterval)
+	configRun, err := config.LoadConfigAgent()
+	if err != nil {
+		log.Println(err)
+	}
+	pollInterval, err := time.ParseDuration(configRun.PollInterval)
+	if err != nil {
+		log.Println(err)
+	}
+	reportInterval, err := time.ParseDuration(configRun.ReportInterval)
+	if err != nil {
+		log.Println(err)
+	}
 	tickerPoll := time.NewTicker(pollInterval)
 	tickerReport := time.NewTicker(reportInterval)
 	sigs := make(chan os.Signal, 1)
