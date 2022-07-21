@@ -17,7 +17,6 @@ import (
 	_ "github.com/jackc/pgx/stdlib"
 )
 
-//todo: добавить интерфейсы для хэндлеров/метод сет?
 func ListMetricsAll(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricsRun.GetMetrics(saveConfig)
@@ -25,7 +24,7 @@ func ListMetricsAll(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig)
 		fmt.Fprintln(w, "METRICS GAUGE:")
 		//todo: нужно ли добавлять RLock
 		for key, value := range metricsRun.GaugeMetric {
-			fmt.Fprintln(w, key, value)
+			fmt.Fprintf(w, "[%s] %f \n", key, value)
 		}
 		fmt.Fprintln(w, "METRICS COUNTER:")
 		for key, value := range metricsRun.CounterMetric {
@@ -185,7 +184,10 @@ func UpdateMetricJSON(metricsRun *storage.Metrics, saveConfig *storage.SaveConfi
 			}
 		}
 		w.WriteHeader(http.StatusOK)
-		resBody, _ := json.Marshal("{}")
+		resBody, err := json.Marshal("{}")
+		if err != nil {
+			log.Warn().Msg(err.Error())
+		}
 		w.Write(resBody)
 	}
 }
@@ -228,21 +230,18 @@ func UpdateMetrics(metricsRun *storage.Metrics, saveConfig *storage.SaveConfig) 
 
 func Ping(saveConfig *storage.SaveConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//saveConfig.ToDatabase = true
-		//saveConfig.ToDatabaseDSN = "postgres://postgres:postgrespw2@localhost:55000"
+		log := zerolog.New(os.Stdout)
 		if saveConfig.ToDatabase {
-			//todo: вынести логику бд в storage.go
 			err := storage.PingDatabase(saveConfig)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				// to err log
-				fmt.Println("err", err)
+				log.Print("err", err)
 			} else {
 				w.WriteHeader(http.StatusOK)
 			}
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintln(w, "Database DSN isn't set")
+			log.Print(w, "Database DSN isn't set")
 		}
 	}
 }

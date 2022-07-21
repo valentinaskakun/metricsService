@@ -1,4 +1,4 @@
-package metricsruntime
+package metricscollect
 
 import (
 	"runtime"

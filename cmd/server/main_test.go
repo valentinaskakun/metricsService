@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,16 +19,19 @@ var serverAddr = "http://127.0.0.1:8080"
 
 //todo: поменять ее на импортированную из репо
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
-	req, _ := http.NewRequest(method, ts.URL+path, body)
+	req, err := http.NewRequest(method, ts.URL+path, body)
+	if err != nil {
+		log.Println(err)
+	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Fatal(err)
+		t.Log(err)
 		return nil, ""
 	}
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		t.Fatal(err)
+		t.Log(err)
 		return nil, ""
 	}
 	defer resp.Body.Close()
@@ -65,7 +69,10 @@ func TestPostGetMetrics(t *testing.T) {
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	testUpdateLink := "/update/counter/testCount/300"
-	req, _ := http.NewRequest("POST", ts.URL+testUpdateLink, nil)
+	req, err := http.NewRequest("POST", ts.URL+testUpdateLink, nil)
+	if err != nil {
+		log.Println(err)
+	}
 	fmt.Println(req)
 	req.Header.Set("Content-Type", "Content-Type: text/plain")
 	res, err := http.DefaultClient.Do(req)
