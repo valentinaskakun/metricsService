@@ -25,6 +25,9 @@ func UpdateGaugeMetricsCPU(metricsRun *storage.Metrics) {
 	metricsRun.MuGauge.Unlock()
 }
 func UpdateCounterMetrics(action string, metricsRun *storage.Metrics) {
+	if _, ok := metricsRun.CounterMetric["PollCount"]; !ok {
+		metricsRun.CounterMetric["PollCount"] = 0
+	}
 	switch {
 	case action == "add":
 		metricsRun.MuCounter.Lock()
@@ -39,5 +42,4 @@ func UpdateCounterMetrics(action string, metricsRun *storage.Metrics) {
 			metricsRun.CounterMetric[key] = 0
 		}
 	}
-	return
 }

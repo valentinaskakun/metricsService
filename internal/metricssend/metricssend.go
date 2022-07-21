@@ -79,7 +79,7 @@ func SendMetricsBatch(metricsToSend *storage.Metrics, serverToSendLink string) {
 	log := zerolog.New(os.Stdout)
 	var metricsBatch []storage.MetricsJSON
 	if metricsToSend.CounterMetric["PollCount"] == 0 {
-		log.Info().Msg("ERROR: Something went wrong while sendingMetricJSON")
+		log.Info().Msg("ERROR: PollCount is Null")
 		return
 	} else {
 		urlStr, err := url.Parse(serverToSendLink)
