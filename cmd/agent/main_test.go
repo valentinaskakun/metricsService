@@ -21,11 +21,15 @@ func TestUpdateGaugeMetrics(t *testing.T) {
 	}
 }
 func TestUpdateCounterMetrics(t *testing.T) {
-	test := map[string]int64{"PollCount": 6}
-	if metricsupdate.UpdateCounterMetrics("add", test)["PollCount"] != 7 {
+	var metricsCurrent storage.Metrics
+	metricsCurrent.InitMetrics()
+	metricsCurrent.CounterMetric["PollCount"] = 6
+	metricsupdate.UpdateCounterMetrics("add", &metricsCurrent)
+	if metricsCurrent.CounterMetric["PollCount"] != 7 {
 		t.Errorf("PollCount didn't incr")
 	}
-	if metricsupdate.UpdateCounterMetrics("init", test)["PollCount"] != 0 {
+	metricsupdate.UpdateCounterMetrics("init", &metricsCurrent)
+	if metricsCurrent.CounterMetric["PollCount"] != 0 {
 		t.Errorf("PollCount didn't init")
 	}
 }

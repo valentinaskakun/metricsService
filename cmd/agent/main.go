@@ -53,28 +53,16 @@ func main() {
 	//todo добавить WG
 	go func() {
 		for range tickerPoll.C {
-			go func() {
-				MetricsCurrent.MuGauge.Lock()
-				metricsupdate.UpdateGaugeMetricsRuntime(&MetricsCurrent)
-				MetricsCurrent.MuGauge.Unlock()
-				MetricsCurrent.MuCounter.Lock()
-				MetricsCurrent.CounterMetric = metricsupdate.UpdateCounterMetrics("add", MetricsCurrent.CounterMetric)
-				MetricsCurrent.MuCounter.Unlock()
-			}()
-			go func() {
-				MetricsCurrent.MuGauge.Lock()
-				metricsupdate.UpdateGaugeMetricsCPU(&MetricsCurrent)
-				MetricsCurrent.MuGauge.Unlock()
-			}()
+			metricsupdate.UpdateGaugeMetricsRuntime(&MetricsCurrent)
+			metricsupdate.UpdateGaugeMetricsCPU(&MetricsCurrent)
+			metricsupdate.UpdateCounterMetrics("add", &MetricsCurrent)
 		}
 	}()
 	go func() {
 		for range tickerReport.C {
 			metricssend.SendMetricJSON(&MetricsCurrent, configRun.Proto+configRun.Address, &configRun)
 			metricssend.SendMetricsBatch(&MetricsCurrent, configRun.Proto+configRun.Address)
-			MetricsCurrent.MuCounter.Lock()
-			MetricsCurrent.CounterMetric = metricsupdate.UpdateCounterMetrics("init", MetricsCurrent.CounterMetric)
-			MetricsCurrent.MuCounter.Unlock()
+			metricsupdate.UpdateCounterMetrics("init", &MetricsCurrent)
 		}
 	}()
 	select {}

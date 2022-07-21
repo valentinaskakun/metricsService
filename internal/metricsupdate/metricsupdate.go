@@ -9,32 +9,35 @@ import (
 
 func UpdateGaugeMetricsRuntime(metricsRun *storage.Metrics) {
 	tempCurrentMemStatsMetrics := metricscollect.GetCurrentValuesRuntimeGauge()
+	metricsRun.MuGauge.Lock()
 	for key, value := range tempCurrentMemStatsMetrics {
 		metricsRun.GaugeMetric[key] = value
 	}
+	metricsRun.MuGauge.Unlock()
 	metricsRun.GaugeMetric["RandomValue"] = rand.Float64()
 }
 func UpdateGaugeMetricsCPU(metricsRun *storage.Metrics) {
 	tempCurrentCPUStatsMetrics := metricscollect.GetCurrentValuesGOpsGauge()
+	metricsRun.MuGauge.Lock()
 	for key, value := range tempCurrentCPUStatsMetrics {
 		metricsRun.GaugeMetric[key] = value
 	}
+	metricsRun.MuGauge.Unlock()
 }
-func UpdateCounterMetrics(action string, metricsCounterToUpdate map[string]int64) (metricsCounterUpdated map[string]int64) {
-	metricsCounterUpdated = make(map[string]int64)
-	if _, ok := metricsCounterToUpdate["PollCount"]; !ok {
-		metricsCounterToUpdate = make(map[string]int64)
-		metricsCounterToUpdate["PollCount"] = 0
-	}
+func UpdateCounterMetrics(action string, metricsRun *storage.Metrics) {
 	switch {
 	case action == "add":
-		for key, value := range metricsCounterToUpdate {
-			metricsCounterUpdated[key] = value + 1
+		metricsRun.MuCounter.Lock()
+		defer metricsRun.MuCounter.Unlock()
+		for key, value := range metricsRun.CounterMetric {
+			metricsRun.CounterMetric[key] = value + 1
 		}
 	case action == "init":
-		for key := range metricsCounterToUpdate {
-			metricsCounterUpdated[key] = 0
+		metricsRun.MuCounter.Lock()
+		defer metricsRun.MuCounter.Unlock()
+		for key := range metricsRun.CounterMetric {
+			metricsRun.CounterMetric[key] = 0
 		}
 	}
-	return metricsCounterUpdated
+	return
 }
